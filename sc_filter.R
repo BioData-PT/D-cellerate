@@ -1,0 +1,229 @@
+
+#' UI function for statistics module
+sc_filterUI <- function(id) {
+  ns <- NS(id)
+
+  summary.ui <- tagList(
+    h4("Filtering summary:"),
+    tableOutput(ns("table_summary"))
+  )
+
+  barcodes.ui <- tagList(
+    plotOutput(ns("plot_barcodes")),
+    helpText("Plot showing total UMI per barcode. Barcodes selected for further",
+             "analysis are displayed in green."))
+  
+  distributions.ui <- tagList(
+    plotOutput(ns("plot_violins")),
+    helpText("Violin plots showing distributions of total UMI per cell, and number of detected genes per cell."))
+    
+    
+  panels.ui <- tabsetPanel(type="pills",
+                           tabPanel("Barcode Plot", barcodes.ui),
+                           tabPanel("Distributions", distributions.ui),
+                           tabPanel("Summary", summary.ui))
+  
+  mito.ui <- tagList(
+    helpText("Enter a regular expression to define the subset of mitochondrial. (e.g. ^mt- for mouse or ^MT- for human. Leave blank to skip this analysis."),
+    textInput(ns("text_mito_pattern"), label = "Pattern for mitochondrial genes", value = "^mt-.*"),
+    textOutput(ns("text_num_mito"))
+  )
+  
+  more.mito <- tagList(
+    helpText("Filter cells based on percentage of mitochondrial RNA."),
+    numericInput(ns("num_max_mito"), "Max Mitochodrial RNA Ratio", value = 1, min = 0)
+  )
+  
+  options.ui <- 
+    tagList(
+      h4("Filtering options"),
+      helpText("Filter cells based on total UMI count."),
+      numericInput(ns("num_min_umi"), "Min UMI", value = 1, min = 1),
+      numericInput(ns("num_max_umi"), "Max UMI", value = 1e6, min = 1),
+      helpText("Filter cells based on number of genes detected."),
+      numericInput(ns("num_min_genes"), "Min Genes", value = 1, min = 1),
+      numericInput(ns("num_max_genes"), "Max Genes", value = 1e6, min = 1),
+      helpText("Filter genes based on number of cells where it is expressed."),
+      numericInput(ns("num_min_cells"), "Min Cells", value = 5, min = 0),
+      h4("Mitochodrial RNA Options"),
+      #helpText("Check below to filter cells based on percentage of mitochodrial RNA."),
+      #checkboxInput(ns("check_mito"), label = "Analyse mitochidrial RNA", value = FALSE),
+      #conditionalPanel(condition = paste0("input['", ns("check_mito"), "']", " == true"), mito.ui)
+      mito.ui,
+      conditionalPanel(condition = paste0("input['", ns("text_mito_pattern"), "']", ' != ""'), more.mito)
+      #selectInput(ns("sel_pca_genes"), label = "Genes to use", 
+      #            choices = c("All genes", "Variable genes"), selected = "Variable genes"),
+      #numericInput(ns("num_pcs"), "Number of PCs to compute", value = 40, min = 0)
+    )
+  
+  fluidRow(
+    box(options.ui, width = 4),
+    box(panels.ui, width = 8)
+  )
+}
+
+#' Server function for statistics module
+#' 
+#' @return A dataframe as a reactive value.
+sc_filterServer <- function(input, output, session, sessionData) {
+
+  # observe({
+  #   req(sessionData$dataframe())
+  #   
+  #   df <- sessionData$dataframe()
+  #   
+  #   max.umi <- max(colSums(df))
+  #   max.genes <- max(colSums(df > 0))
+  #   
+  #   min.umi <- min(colSums(df))
+  #   min.genes <- min(colSums(df > 0))
+  #   
+  #   updateSliderInput(session, "slider_umi", min = min.umi, max = max.umi, value = c(min.umi, max.umi))
+  #   updateSliderInput(session, "slider_genes", min = min.genes, max = max.genes, value = c(min.genes, max.genes))
+  #   
+  #   return(df)
+  # })
+  
+  filter_params <- reactive({
+    list(
+      # min_umi = input$slider_umi[1],
+      # max_umi = input$slider_umi[2],
+      # min_genes = input$slider_genes[1],
+      # max_genes = input$slider_genes[2]
+      min_umi = input$num_min_umi,
+      max_umi = input$num_max_umi,
+      min_genes = input$num_min_genes,
+      max_genes = input$num_max_genes,
+      min_cells = input$num_min_cells,
+      max_mito = input$num_max_mito,
+      use_mito = (input$text_mito_pattern != "")
+    )
+  })
+  
+  sobj_raw <- reactive({
+    df <- sessionData$dataframe()
+    
+    print("Creating raw Seurat object...")
+    
+    withProgress(message = 'Creating Seurat object...', {
+      CreateSeuratObject(raw.data = df)
+    })
+  })
+  
+  sobj_filtered <- reactive({
+    req(sessionData$dataframe(), filter_params())
+    
+    df <- sessionData$dataframe()
+
+    min.umi <- filter_params()$min_umi
+    max.umi <- filter_params()$max_umi
+    min.genes <- filter_params()$min_genes
+    max.genes <- filter_params()$max_genes
+    min.cells <- filter_params()$min_cells
+    max.mito <- filter_params()$max_mito
+    
+    print("Creating filtered Seurat object...")
+    
+    withProgress(message = 'Creating Seurat object...', {
+      umi.per.barcode <- colSums(df)
+      genes.per.barcode <- colSums(df > 0)
+      
+      df <- df[ , which(
+        umi.per.barcode >= min.umi 
+        & umi.per.barcode <= max.umi 
+        & genes.per.barcode >= min.genes
+        & genes.per.barcode <= max.genes), drop=FALSE ]
+
+      cells.per.gene <- rowSums(df)
+      
+      df <- df[ which(cells.per.gene >= min.cells),, drop=FALSE ]
+      
+      sobj <- CreateSeuratObject(raw.data = df)
+    })
+    
+    if (input$text_mito_pattern != "") {
+      mito.genes <- grep(input$text_mito_pattern, rownames(sobj@data), value = TRUE)
+      percent.mito <- Matrix::colSums(sobj@data[mito.genes, ]) / Matrix::colSums(sobj@data)
+      sobj <- AddMetaData(sobj, metadata = percent.mito, col.name = "percent.mito")
+      
+      sobj <- FilterCells(sobj, subset.names = "percent.mito", high.thresholds = max.mito)
+    }
+    
+    return(sobj)
+  })
+  
+  output$table_summary <- renderTable({
+    df <- sessionData$dataframe()
+    
+    min.umi <- filter_params()$min_umi
+    max.umi <- filter_params()$max_umi
+    min.genes <- filter_params()$min_genes
+    max.genes <- filter_params()$max_genes
+    
+    umi.per.barcode <- colSums(df)
+    genes.per.barcode <- colSums(df > 0)
+    
+    snames <- c(
+      "Total barcodes",
+      "Total genes",
+      "Barcodes below min UMI threshold",
+      "Barcodes above max UMI threshold",
+      "Barcodes below min gene threshold",
+      "Barcodes above max gene threshold",
+      "Barcodes passing filters",
+      "Genes passing filters")
+    
+    svalues <- c(
+      ncol(df),
+      nrow(df),
+      sum(umi.per.barcode <= min.umi),
+      sum(umi.per.barcode >= max.umi),
+      sum(genes.per.barcode <= min.genes),
+      sum(genes.per.barcode >= max.genes),
+      ncol(sobj_filtered()@data),
+      nrow(sobj_filtered()@data))
+    
+    dfsum <- data.frame(row.names = snames, Value=svalues)
+    
+    return(dfsum)
+  }, rownames = TRUE, colnames = FALSE)
+    
+  output$plot_barcodes <- renderPlot({
+    df <- sessionData$dataframe()
+    min.umi <- filter_params()$min_umi
+    max.umi <- filter_params()$max_umi
+    
+    umi.per.barcode <- colSums(df)
+    x <- sort(umi.per.barcode, decreasing = TRUE)
+    plot(x, log="xy", type="l", xlab="Barcodes", ylab="UMI counts")
+    
+    abline(h=c(min.umi, max.umi), lty="dashed", col="darkred")
+    
+    w <- which(x >= min.umi & x <= max.umi)
+    lines(w, x[w], col="green2", lwd=2)
+  })
+  
+  output$plot_violins <- renderPlot({
+    sobj <- sobj_filtered()
+    
+    VlnPlot(sobj, features.plot = intersect(c("nUMI", "nGene", "percent.mito"), colnames(sobj@meta.data)), point.size.use = 0.2)
+  })
+
+  output$text_num_mito <- renderText({
+    sobj <- sobj_filtered()
+    
+    if (input$text_mito_pattern != "") {
+      mito.genes <- grep(input$text_mito_pattern, rownames(sobj@data), value = TRUE)
+      return(paste0("Number of mitochondrial genes: ", length(mito.genes)))
+    } else {
+      return(paste0("Skip."))
+    }
+  })
+  
+  sessionData$sobj_filtered <- sobj_filtered
+  sessionData$filter_params <- filter_params
+  
+  return(sessionData)
+}
+
+

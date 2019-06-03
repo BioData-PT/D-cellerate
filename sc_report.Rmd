@@ -1,0 +1,21 @@
+---
+title: "Untitled"
+author: "Daniel Neves"
+date: "January 18, 2018"
+output: html_document
+params:
+  all_markers: NA
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(shiny)
+```
+
+
+```{r}
+knitr::kable(params$all_markers)
+```
+
