@@ -171,7 +171,7 @@ sc_markersServer <- function(input, output, session, sessionData) {
     req(input$sel_cluster)
     req(input$sel_genes)
     
-    #markers <- all_markers()
+    all_markers()
     #markers <- markers[[ input$sel_cluster ]]
     
     genes <- input$sel_genes

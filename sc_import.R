@@ -18,7 +18,7 @@ sc_importUI <- function(id, datasets) {
                  choices = list("File upload" = "file", "Built-in dataset" = "dataset"), 
                  selected = "dataset"),
     tags$hr(),
-    conditionalPanel(condition = paste0("input['", ns("radioImport"), "']", " == 'file'"), tableImportUI(ns("table_import"))),
+    conditionalPanel(condition = paste0("input['", ns("radioImport"), "']", " == 'file'"), mod_import_tableUI(ns("table_import"))),
     conditionalPanel(condition = paste0("input['", ns("radioImport"), "']", " == 'dataset'"), datasetImportUI_2(ns("dataset_import"), datasets))
   )
   
@@ -43,7 +43,7 @@ sc_importUI <- function(id, datasets) {
 #' @return A dataframe as a reactive value.
 sc_importServer <- function(input, output, session, datasets, sessionData) {
   
-  fileImportData <- callModule(tableImportServer, "table_import", stringsAsFactors = FALSE)
+  fileImportData <- callModule(mod_import_tableServer, "table_import", stringsAsFactors = FALSE)
   datasetImportData <- callModule(datasetImportServer_2, "dataset_import", datasets)
   
   dataframe <- reactive({
@@ -69,7 +69,7 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
     validate(need(df, "Please import a table."))
     
     return(as.matrix(df[ 1:10, 1:10 ]))
-  })
+  }, rownames = TRUE)
   
   # show the summary
   output$table_summary1 <- renderUI({

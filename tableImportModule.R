@@ -133,3 +133,86 @@ tableImportServer <- function(input, output, session, stringsAsFactors) {
   return(list(dataframe=dataframe,
               name=name))
 }
+
+
+
+
+#' UI function for table import module
+mod_import_tableUI <- function(id) {
+  ns <- NS(id)
+  
+  txt.ui <- tagList(
+    checkboxInput(ns("heading"), "Has heading", value = TRUE),
+    fluidRow(
+      column(6, selectInput(ns("sep"), 
+                            "Separator", 
+                            c("Space" = " ",
+                              "Tab" = "\t",
+                              "Comma" = ",",
+                              "Semicolon" = ";"), 
+                            selected = "\t")),
+      column(6, selectInput(ns("quote"), 
+                            "Quote", 
+                            c("None" = "",
+                              "Double quote" = "\"",
+                              "Single quote" = "'"), 
+                            selected="None"))
+    )
+  )
+  
+  tagList(
+    selectInput(ns("sel_type"), label = "File type", choices=c("Tabular", "Drop-seq tools", "Cellranger HDF5")),
+    fileInput(ns("file"), "", width = "100%"),
+    conditionalPanel(condition = paste0("input['", ns("sel_type"), "']", " == 'Tabular'"),
+                     txt.ui)
+    )
+}
+
+
+
+
+#' Server function for table loader module
+#' 
+#' @return A dataframe as a reactive value.
+mod_import_tableServer <- function(input, output, session, stringsAsFactors=FALSE) {
+  # get the file
+  # fileHandle <- reactive({
+  #   validate(need(input$file, message = FALSE))
+  #   
+  #   input$file
+  # })
+  
+  # parse into a data.frame
+  dataframe <- reactive({
+    if (!is.null(input$file)) {
+      if (input$sel_type == "Tabular") {
+        mat <- read.table(input$file$datapath,
+                   header = input$heading, 
+                   sep = input$sep,
+                   quote = input$quote,
+                   stringsAsFactors = stringsAsFactors,
+                   check.names = FALSE)
+        mat <- Matrix(as.matrix(mat), sparse=TRUE)
+      } else if (input$sel_type == "Drop-seq tools") {
+        mat <- read.table(gzfile(input$file$datapath), header=TRUE)
+        rownames(mat) <- mat$GENE
+        mat <- Matrix(as.matrix(mat[, -1]), sparse=TRUE)
+      } else if (input$sel_type == "Cellranger HDF5") {
+        mat <- Read10X_h5(input$file$datapath)
+      }
+      
+      return(mat)
+    } else {
+      return (NULL)
+    }
+  })
+  
+  name <- reactive({
+    fileHandle()$filename
+  })
+  
+  return(list(dataframe=dataframe,
+              name=name))
+}
+
+
