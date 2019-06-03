@@ -88,8 +88,7 @@ sc_clusterServer <- function(input, output, session, sessionData) {
     sobj@meta.data$original.clusters <- sobj@ident
   
     clustering_stats$ready <- TRUE
-    # clusters.observer$resume()
-    
+
     return(sobj)
   })
 
@@ -100,14 +99,15 @@ sc_clusterServer <- function(input, output, session, sessionData) {
     
     if (input$check_rename == TRUE) {
       clusters <- cluster_names()
+      
+      sobj@meta.data$new.clusters <- plyr::mapvalues(sobj@meta.data$original.clusters, from=clusters$from, to=clusters$to)
     } else {    
-      clusters <- data.frame(from=sort(unique(sobj@meta.data$original.clusters)), 
-                             to=sort(unique(sobj@meta.data$original.clusters)), 
-                             stringsAsFactors = FALSE)
+      # clusters <- data.frame(from=sort(unique(sobj@meta.data$original.clusters)), 
+      #                        to=sort(unique(sobj@meta.data$original.clusters)), 
+      #                        stringsAsFactors = FALSE)
+      sobj@meta.data$new.clusters <- sobj@meta.data$original.clusters
     }
     
-    sobj@meta.data$new.clusters <- plyr::mapvalues(sobj@meta.data$original.clusters, from=clusters$from, to=clusters$to)
-
     sobj <- SetAllIdent(sobj, "new.clusters")
     
     return(sobj)
