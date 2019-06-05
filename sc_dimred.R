@@ -34,6 +34,7 @@ sc_dimredUI <- function(id) {
     numericInput(ns("num_pcs"), "Number of PCs to compute", value = 40, min = 0),
     h4("t-SNE Options"),
     #helpText("More options??! Cool!"),
+    numericInput(ns("num_pca"), "Number of PCs to use", value = 20, min = 0),
     numericInput(ns("num_perplexity"), "Perplexity", value = 30, min = 1),
     numericInput(ns("num_tse_seed"), "RNG Seed", value = 42, min = 1)
   )
@@ -128,13 +129,14 @@ sc_dimredServer <- function(input, output, session, sessionData) {
     req(sobj_pca())
     
     sobj <- sobj_pca()
+    pcnum <- input$num_pca
     perplexity <- input$num_perplexity
     seed <- input$num_tse_seed
     
     print("Running t-SNE projection...")
     
     withProgress(message = 'Running t-SNE projection...', {
-      sobj <- RunTSNE(sobj, dims.use = 1:20, do.fast = TRUE, perplexity=perplexity, seed.use = seed)
+      sobj <- RunTSNE(sobj, dims.use = 1:pcnum, do.fast = TRUE, perplexity=perplexity, seed.use = seed)
     })
     
     return(sobj)

@@ -25,7 +25,7 @@ sc_filterUI <- function(id) {
   
   mito.ui <- tagList(
     helpText("Enter a regular expression to define the subset of mitochondrial. (e.g. ^mt- for mouse or ^MT- for human. Leave blank to skip this analysis."),
-    textInput(ns("text_mito_pattern"), label = "Pattern for mitochondrial genes", value = "^mt-.*"),
+    textInput(ns("text_mito_pattern"), label = "Pattern for mitochondrial genes", value = ""),
     textOutput(ns("text_num_mito"))
   )
   

@@ -47,7 +47,7 @@ sc_markersUI <- function(id) {
                             "Standard AUC classifier"="roc")),
       numericInput(ns("num_logfc"), label = "LogFC threshold", value=0.25),
       helpText("Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells. Default is 0.25 Increasing logfc.threshold speeds up the function, but can miss weaker signals."),
-      numericInput(ns("num_minpct"), label = "Minimum fraction of cells", value=0.1),
+      numericInput(ns("num_minpct"), label = "Minimum fraction of cells", value=0.25),
       helpText("Only test genes that are detected in a minimum fraction of cells in either of the two populations.", 
                "Meant to speed up the function by not testing genes that are very infrequently expressed.")
       #h4("More Options"),
