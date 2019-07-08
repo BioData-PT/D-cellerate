@@ -145,24 +145,6 @@ sc_clusterServer <- function(input, output, session, sessionData) {
     return(df)
   }, selection = 'none', server = F, editable = T)
   
-  # cluster_names <- reactive({
-  #   req(sobj_cluster())
-  # 
-  #   sobj <- sobj_cluster()
-  # 
-  #   from <- sort(unique(sobj@ident))
-  #   to <- sapply(paste0("text_cluster_to_", from), function(x) input[[ x ]])
-  # 
-  #   do.call(req, lapply(paste0("text_cluster_to_", from), function(x) input[[ x ]]))
-  # 
-  #   df <- data.frame(from=from, to=to, stringsAsFactors = FALSE)
-  # 
-  #   print("Cluster names")
-  #   print(df)
-  # 
-  #   return(df)
-  # })
-  
   cluster_names <- reactive({
     req(sobj_cluster())
 
@@ -177,7 +159,7 @@ sc_clusterServer <- function(input, output, session, sessionData) {
 
     return(df)
   })
-  # 
+
   output$ui_rename <- renderUI({
     req(sobj_cluster())
 

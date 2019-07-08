@@ -121,7 +121,7 @@ sc_markersServer <- function(input, output, session, sessionData) {
   # })
   
   observeEvent(input$sel_cluster, {
-    ready <- sessionData$clustering_stats$ready
+    ready <- sessionData$status$clustering_ready
     
     if (ready == TRUE) {
       print("updating genes...")

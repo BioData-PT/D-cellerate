@@ -38,7 +38,7 @@ sc_filterUI <- function(id) {
     tagList(
       h4("Filtering options"),
       helpText("Filter cells based on total UMI count."),
-      numericInput(ns("num_min_umi"), "Min UMI", value = 1, min = 1),
+      numericInput(ns("num_min_umi"), "Min UMI", value = 500, min = 1),
       numericInput(ns("num_max_umi"), "Max UMI", value = 1e6, min = 1),
       helpText("Filter cells based on number of genes detected."),
       numericInput(ns("num_min_genes"), "Min Genes", value = 1, min = 1),
@@ -67,6 +67,8 @@ sc_filterUI <- function(id) {
 #' @return A dataframe as a reactive value.
 sc_filterServer <- function(input, output, session, sessionData) {
 
+  status <- sessionData$status
+  
   # observe({
   #   req(sessionData$dataframe())
   #   
@@ -85,11 +87,12 @@ sc_filterServer <- function(input, output, session, sessionData) {
   # })
   
   filter_params <- reactive({
+    # when changing filter params, invalidate further analyses
+    status$vargenes_ready <- FALSE
+    status$pca_ready <- FALSE
+    status$clustering_ready <- FALSE
+    
     list(
-      # min_umi = input$slider_umi[1],
-      # max_umi = input$slider_umi[2],
-      # min_genes = input$slider_genes[1],
-      # max_genes = input$slider_genes[2]
       min_umi = input$num_min_umi,
       max_umi = input$num_max_umi,
       min_genes = input$num_min_genes,
