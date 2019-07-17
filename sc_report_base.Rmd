@@ -1,0 +1,45 @@
+---
+title: "D-cellerate Reproduceable Report"
+author: "D-cellerate"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+params:
+  import.params: NA
+  all.markers: NA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(shiny)
+library(knitr)
+```
+
+```{r, include=FALSE}
+list_to_dataframe <- function(l) {
+  data.frame(Value=unlist(l), row.names=names(l))
+}
+```
+
+
+# Import Data
+
+```{r params, include=FALSE}
+import.params <- params$import.params
+```
+
+```{r, echo=FALSE, results='asis'}
+kable(list_to_dataframe(import.params))
+```
+
+```{r, echo=FALSE}
+list_to_dataframe(import.params)
+```
+
+
+<!-- import.fun -->
+
+```{r}
+dim(mat)
+```
+

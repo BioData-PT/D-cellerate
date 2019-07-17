@@ -32,7 +32,9 @@ datasetImportServer <- function(input, output, session, datasets) {
   })
   
   list(dataframe=dataframe,
-       name=name)
+       name=name,
+       params=reactive(data.frame()),
+       import.fun=reactive(function(){}))
 }
 
 
@@ -71,29 +73,23 @@ mod_import_tableUI <- function(id) {
 
 
 import.tabular <- function(import.params) {
-  mat <- read.table(import.params$datapath,
-                    header = import.params$filepath, 
+  mat <- read.table(import.params$filepath,
+                    header = import.params$header, 
                     sep = import.params$sep,
                     quote = import.params$quote,
                     stringsAsFactors = import.params$stringsAsFactors,
                     check.names = import.params$check.names)
-  Matrix(as.matrix(mat), sparse=TRUE)
+  mat <- Matrix(as.matrix(mat), sparse=TRUE)
 }
 
+import.dropseq <- function(import.params) {
+  mat <- read.table(gzfile(import.params$filepath), header=TRUE, row.names=1)
+  mat <- Matrix(as.matrix(mat), sparse=TRUE)
+}
 
-
-e1 <- expression(
-    mat <- read.table(input$file$datapath,
-                      header = input$heading, 
-                      sep = input$sep,
-                      quote = input$quote,
-                      stringsAsFactors = stringsAsFactors,
-                      check.names = FALSE),
-    mat <- Matrix(as.matrix(mat), sparse=TRUE)
-)
-
-
-
+import.cellranger.hdf5 <- function(import.params) {
+  mat <- Read10X_h5(import.params$filepath)
+}
 
 #' Server function for table loader module
 #' 
@@ -110,29 +106,32 @@ mod_import_tableServer <- function(input, output, session, stringsAsFactors=FALS
              quote = input$quote,
              stringsAsFactors = FALSE,
              check.names = FALSE
+           ),
+           "Drop-seq tools" = list(
+             type = "Drop-seq tools",
+             filepath = input$file$datapath
+           ),
+           "Cellranger HDF5" = list(
+             type = "Cellranger HDF5",
+             filepath = input$file$datapath
            )
     )
+  })
+  
+  import.fun <- reactive({
+    switch(input$sel_type,
+           "Tabular" = import.tabular,
+           "Drop-seq tools" = import.dropseq,
+           "Cellranger HDF5" = import.cellranger.hdf5)
   })
   
   # parse into a data.frame
   dataframe <- reactive({
     if (!is.null(input$file)) {
+      params <- import.params()
+      
       withProgress(message = "Loading dataset...", expr = {
-        if (input$sel_type == "Tabular") {
-          mat <- read.table(input$file$datapath,
-                            header = input$heading, 
-                            sep = input$sep,
-                            quote = input$quote,
-                            stringsAsFactors = stringsAsFactors,
-                            check.names = FALSE)
-          mat <- Matrix(as.matrix(mat), sparse=TRUE)
-        } else if (input$sel_type == "Drop-seq tools") {
-          mat <- read.table(gzfile(input$file$datapath), header=TRUE)
-          rownames(mat) <- mat$GENE
-          mat <- Matrix(as.matrix(mat[, -1]), sparse=TRUE)
-        } else if (input$sel_type == "Cellranger HDF5") {
-          mat <- Read10X_h5(input$file$datapath)
-        }
+        mat <- import.fun()(params)
       }) 
       
       return(mat)
@@ -146,7 +145,10 @@ mod_import_tableServer <- function(input, output, session, stringsAsFactors=FALS
   })
   
   return(list(dataframe=dataframe,
-              name=name))
+              name=name,
+              params=import.params,
+              import.fun=import.fun
+              ))
 }
 
 
@@ -175,16 +177,6 @@ sc_importUI <- function(id, datasets) {
     conditionalPanel(condition = paste0("input['", ns("radioImport"), "']", " == 'dataset'"), datasetImportUI(ns("dataset_import"), datasets))
   )
   
-  # tagList(
-  #   bsCollapse(id=ns("table"), multiple=TRUE, open = c("Import"),
-  #              bsCollapsePanel("Import", 
-  #                              import.ui,
-  #                              style = "default")))
-
-  # sidebarLayout(
-  #   sidebarPanel(import.ui),
-  #   mainPanel(panels.ui))
-  
   fluidRow(
     box(import.ui, width = 4),
     box(panels.ui, width = 8)
@@ -199,9 +191,7 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
   fileImportData <- callModule(mod_import_tableServer, "table_import", stringsAsFactors = FALSE)
   datasetImportData <- callModule(datasetImportServer, "dataset_import", datasets)
   
-  dataframe <- reactive({
-    req(input$radioImport)
-    
+  import.data <- reactive({
     if (input$radioImport == "file") {
       req(fileImportData$dataframe())
     } else {
@@ -209,8 +199,12 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
     }
     
     switch(input$radioImport,
-           "file"=fileImportData$dataframe(),
-           "dataset"=datasetImportData$dataframe())
+           "file"=fileImportData,
+           "dataset"=datasetImportData)
+  })
+
+  dataframe <- reactive({
+    import.data()$dataframe()
   })
   
   #observeEvent(dataframe())
@@ -236,6 +230,9 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
   })
 
   sessionData$dataframe <- dataframe
+  sessionData$name <- reactive(import.data()$name())
+  sessionData$import.params <- reactive(import.data()$params())
+  sessionData$import.fun <- reactive(import.data()$import.fun())
   
   return(sessionData)
 }

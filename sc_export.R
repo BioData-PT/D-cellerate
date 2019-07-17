@@ -12,7 +12,9 @@ sc_exportUI <- function(id) {
     useShinyjs(),
     summary.ui,
     #uiOutput(ns("uiSections")),
-    downloadButton(ns("report"), "Generate report")
+    downloadButton(ns("report"), "Generate report"),
+    h4("Debug"),
+    verbatimTextOutput(ns("txt_debug"))
   )
 }
 
@@ -42,7 +44,32 @@ sc_exportServer <- function(input, output, session, sessionData) {
     return(ftext)
   })
   
-  disable("report")
+  output$txt_debug <- renderText({
+    # print(str(sessionData$import.params()))
+    # 
+    # print(sessionData$import.fun())
+    # tidy_function_body(sessionData$import.fun())
+    # cat(make_chunk_from_function_body(sessionData$import.fun()))
+    paste(report.source(), collapse="\n")
+    
+    #str(list_to_dataframe(sessionData$import.params()))
+    
+  })
+  
+  report.source <- reactive({
+    req(sessionData$import.params())
+    
+    report <- readLines("sc_report_base.Rmd")
+    
+    w <- which(report == "<!-- import.fun -->")
+    report[w] <- make_chunk_from_function_body(sessionData$import.fun(), chunk.name = "import")
+    
+    print(report)
+    
+    return(report)
+  })
+  
+  # disable("report")
 
   # observe({
   #   req(sessionData$all_markers())
@@ -53,13 +80,15 @@ sc_exportServer <- function(input, output, session, sessionData) {
   output$report <- downloadHandler(
     filename = "report.html",
     content = function(file) {
-      req(sessionData$all_markers())
-      
-      tempReport <- file.path(tempdir(), "sc_report.Rmd")
-      file.copy("sc_report.Rmd", tempReport, overwrite = TRUE)
+      req(sessionData$import.params())
 
       # Set up parameters to pass to Rmd document
-      params <- list(all_markers = sessionData$all_markers())
+      params <- list(import.params = sessionData$import.params())
+      
+      report <- report.source()
+      
+      tempReport <- file.path(tempdir(), "sc_report.Rmd")
+      writeLines(report, con = tempReport, sep="\n")
 
       rmarkdown::render(tempReport,
                         output_file = file,
@@ -67,6 +96,25 @@ sc_exportServer <- function(input, output, session, sessionData) {
                         envir = new.env(parent = globalenv()))
     }
   )
+  
+  # output$report <- downloadHandler(
+  #   filename = "report.html",
+  #   content = function(file) {
+  #     req(sessionData$all_markers())
+  #     
+  #     tempReport <- file.path(tempdir(), "sc_report.Rmd")
+  #     file.copy("sc_report.Rmd", tempReport, overwrite = TRUE)
+  # 
+  #     # Set up parameters to pass to Rmd document
+  #     params <- list(all_markers = sessionData$all_markers())
+  # 
+  #     rmarkdown::render(tempReport,
+  #                       output_file = file,
+  #                       params = params,
+  #                       envir = new.env(parent = globalenv()))
+  #   }
+  # )
+  
   
   return(sessionData)
   

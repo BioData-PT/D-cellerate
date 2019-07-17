@@ -117,7 +117,7 @@ server <- function(input, output, session) {
   sessionData <- callModule(sc_markersServer, "sc_markers", sessionData)
   
   # export
-  # sessionData <- callModule(sc_exportServer, "sc_export", sessionData)
+  sessionData <- callModule(sc_exportServer, "sc_export", sessionData)
 
   # observeEvent(sessionData$dataframe(), {
   #   req(sessionData$dataframe())
