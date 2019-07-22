@@ -30,10 +30,6 @@ source("sc_cluster.R")
 source("sc_markers.R")
 source("sc_export.R")
 
-
-
-
-
 options(shiny.maxRequestSize=1*1024^3)
 
 print("Reading datasets...")

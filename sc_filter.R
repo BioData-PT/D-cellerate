@@ -1,4 +1,32 @@
 
+# filter
+sc.filter <- function(mat, filter.params) {
+  umi.per.barcode <- colSums(mat)
+  genes.per.barcode <- colSums(mat > 0)
+  
+  with(filter.params, {
+    mat <- mat[ , which(
+      umi.per.barcode >= min.umi 
+      & umi.per.barcode <= max.umi 
+      & genes.per.barcode >= min.genes
+      & genes.per.barcode <= max.genes), drop=FALSE ]
+    
+    cells.per.gene <- rowSums(mat)
+    
+    mat <- mat[ which(cells.per.gene >= min.cells),, drop=FALSE ]
+    
+    sobj <- CreateSeuratObject(raw.data = mat)
+    
+    if (mito.pattern != "") {
+      mito.genes <- grep(mito.pattern, rownames(sobj@data), value = TRUE)
+      percent.mito <- Matrix::colSums(sobj@data[mito.genes, ]) / Matrix::colSums(sobj@data)
+      sobj <- AddMetaData(sobj, metadata = percent.mito, col.name = "percent.mito")
+      
+      sobj <- FilterCells(sobj, subset.names = "percent.mito", high.thresholds = max.mito)
+    }
+  })
+}
+
 #' UI function for statistics module
 sc_filterUI <- function(id) {
   ns <- NS(id)
@@ -93,13 +121,13 @@ sc_filterServer <- function(input, output, session, sessionData) {
     status$clustering_ready <- FALSE
     
     list(
-      min_umi = input$num_min_umi,
-      max_umi = input$num_max_umi,
-      min_genes = input$num_min_genes,
-      max_genes = input$num_max_genes,
-      min_cells = input$num_min_cells,
-      max_mito = input$num_max_mito,
-      use_mito = (input$text_mito_pattern != "")
+      min.umi = input$num_min_umi,
+      max.umi = input$num_max_umi,
+      min.genes = input$num_min_genes,
+      max.genes = input$num_max_genes,
+      min.cells = input$num_min_cells,
+      mito.pattern = input$text_mito_pattern,
+      max.mito = input$num_max_mito
     )
   })
   
@@ -116,52 +144,23 @@ sc_filterServer <- function(input, output, session, sessionData) {
   sobj_filtered <- reactive({
     req(sessionData$dataframe(), filter_params())
     
-    df <- sessionData$dataframe()
-
-    min.umi <- filter_params()$min_umi
-    max.umi <- filter_params()$max_umi
-    min.genes <- filter_params()$min_genes
-    max.genes <- filter_params()$max_genes
-    min.cells <- filter_params()$min_cells
-    max.mito <- filter_params()$max_mito
-    
     print("Creating filtered Seurat object...")
     
     withProgress(message = 'Creating Seurat object...', {
-      umi.per.barcode <- colSums(df)
-      genes.per.barcode <- colSums(df > 0)
-      
-      df <- df[ , which(
-        umi.per.barcode >= min.umi 
-        & umi.per.barcode <= max.umi 
-        & genes.per.barcode >= min.genes
-        & genes.per.barcode <= max.genes), drop=FALSE ]
-
-      cells.per.gene <- rowSums(df)
-      
-      df <- df[ which(cells.per.gene >= min.cells),, drop=FALSE ]
-      
-      sobj <- CreateSeuratObject(raw.data = df)
+      sobj <- sc.filter(sessionData$dataframe(), filter_params())
     })
-    
-    if (input$text_mito_pattern != "") {
-      mito.genes <- grep(input$text_mito_pattern, rownames(sobj@data), value = TRUE)
-      percent.mito <- Matrix::colSums(sobj@data[mito.genes, ]) / Matrix::colSums(sobj@data)
-      sobj <- AddMetaData(sobj, metadata = percent.mito, col.name = "percent.mito")
-      
-      sobj <- FilterCells(sobj, subset.names = "percent.mito", high.thresholds = max.mito)
-    }
     
     return(sobj)
   })
   
+    
   output$table_summary <- renderTable({
     df <- sessionData$dataframe()
     
-    min.umi <- filter_params()$min_umi
-    max.umi <- filter_params()$max_umi
-    min.genes <- filter_params()$min_genes
-    max.genes <- filter_params()$max_genes
+    min.umi <- filter_params()$min.umi
+    max.umi <- filter_params()$max.umi
+    min.genes <- filter_params()$min.genes
+    max.genes <- filter_params()$max.genes
     
     umi.per.barcode <- colSums(df)
     genes.per.barcode <- colSums(df > 0)
@@ -193,8 +192,9 @@ sc_filterServer <- function(input, output, session, sessionData) {
     
   output$plot_barcodes <- renderPlot({
     df <- sessionData$dataframe()
-    min.umi <- filter_params()$min_umi
-    max.umi <- filter_params()$max_umi
+    
+    min.umi <- filter_params()$min.umi
+    max.umi <- filter_params()$max.umi
     
     umi.per.barcode <- colSums(df)
     x <- sort(umi.per.barcode, decreasing = TRUE)
@@ -224,7 +224,8 @@ sc_filterServer <- function(input, output, session, sessionData) {
   })
   
   sessionData$sobj_filtered <- sobj_filtered
-  sessionData$filter_params <- filter_params
+  sessionData$filter.params <- filter_params
+  sessionData$filter.fun <- reactive(sc.filter)
   
   return(sessionData)
 }

@@ -131,9 +131,9 @@ sc_dimredServer <- function(input, output, session, sessionData) {
   #
   
   observe({
-    pars <- sessionData$filter_params()
+    pars <- sessionData$filter.params()
     
-    if (pars$use_mito == TRUE) {
+    if (pars$mito.pattern != "") {
       enable(id = "check_reg_mito")
     } else {
       updateCheckboxInput(session, "check_reg_mito", value=FALSE)

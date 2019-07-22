@@ -5,14 +5,21 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 params:
   import.params: NA
+  filter.params: NA
   all.markers: NA
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
 
+# Load required packages
+
+```{r}
 library(shiny)
 library(knitr)
+library(Seurat)
+library(Matrix)
 ```
 
 ```{r, include=FALSE}
@@ -21,25 +28,39 @@ list_to_dataframe <- function(l) {
 }
 ```
 
-
 # Import Data
 
-```{r params, include=FALSE}
-import.params <- params$import.params
+```{r}
+#-- import_params
 ```
-
-```{r, echo=FALSE, results='asis'}
-kable(list_to_dataframe(import.params))
-```
-
-```{r, echo=FALSE}
-list_to_dataframe(import.params)
-```
-
 
 <!-- import.fun -->
 
 ```{r}
 dim(mat)
 ```
+
+# Filter
+
+```{r}
+#-- filter_params
+```
+
+```{r}
+filter.params
+```
+
+<!-- filter.fun -->
+
+```{r}
+dim(sobj@data)
+```
+
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
+
 

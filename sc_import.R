@@ -2,7 +2,28 @@
 #source("tableImportModule.R")
 
 
+import.tabular <- function(import.params) {
+  mat <- read.table(import.params$filepath,
+                    header = import.params$header, 
+                    sep = import.params$sep,
+                    quote = import.params$quote,
+                    stringsAsFactors = import.params$stringsAsFactors,
+                    check.names = import.params$check.names)
+  mat <- Matrix(as.matrix(mat), sparse=TRUE)
+}
 
+import.dropseq <- function(import.params) {
+  mat <- read.table(gzfile(import.params$filepath), header=TRUE, row.names=1)
+  mat <- Matrix(as.matrix(mat), sparse=TRUE)
+}
+
+import.cellranger.hdf5 <- function(import.params) {
+  mat <- Read10X_h5(import.params$filepath)
+}
+
+import.example <- function(import.params) {
+  mat <- example.datasets[[ import.params$dataset ]]$dataframe
+}
 
 #' UI function for table import module
 datasetImportUI <- function(id, datasets) {
@@ -19,12 +40,19 @@ datasetImportUI <- function(id, datasets) {
 #' 
 #' @return A dataframe as a reactive value.
 datasetImportServer <- function(input, output, session, datasets) {
+  import.params <- reactive({
+    list(
+      type = "Built-in",
+      dataset = input$selDataset
+    )
+  })
+  
   output$txtDescription <- renderText({ 
     print(as.character(datasets[[ input$selDataset ]]$description))
   })
   
   dataframe <- reactive({
-    datasets[[ input$selDataset ]]$dataframe
+    import.example(import.params())
   })
   
   name <- reactive({
@@ -33,8 +61,8 @@ datasetImportServer <- function(input, output, session, datasets) {
   
   list(dataframe=dataframe,
        name=name,
-       params=reactive(data.frame()),
-       import.fun=reactive(function(){}))
+       params=import.params,
+       import.fun=reactive(import.example))
 }
 
 
@@ -69,26 +97,6 @@ mod_import_tableUI <- function(id) {
     conditionalPanel(condition = paste0("input['", ns("sel_type"), "']", " == 'Tabular'"),
                      txt.ui)
   )
-}
-
-
-import.tabular <- function(import.params) {
-  mat <- read.table(import.params$filepath,
-                    header = import.params$header, 
-                    sep = import.params$sep,
-                    quote = import.params$quote,
-                    stringsAsFactors = import.params$stringsAsFactors,
-                    check.names = import.params$check.names)
-  mat <- Matrix(as.matrix(mat), sparse=TRUE)
-}
-
-import.dropseq <- function(import.params) {
-  mat <- read.table(gzfile(import.params$filepath), header=TRUE, row.names=1)
-  mat <- Matrix(as.matrix(mat), sparse=TRUE)
-}
-
-import.cellranger.hdf5 <- function(import.params) {
-  mat <- Read10X_h5(import.params$filepath)
 }
 
 #' Server function for table loader module
@@ -141,7 +149,7 @@ mod_import_tableServer <- function(input, output, session, stringsAsFactors=FALS
   })
   
   name <- reactive({
-    fileHandle()$filename
+    input$file$name
   })
   
   return(list(dataframe=dataframe,
@@ -150,11 +158,6 @@ mod_import_tableServer <- function(input, output, session, stringsAsFactors=FALS
               import.fun=import.fun
               ))
 }
-
-
-
-
-
 
 #' UI function for table import module
 sc_importUI <- function(id, datasets) {

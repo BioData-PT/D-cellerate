@@ -26,9 +26,7 @@ sc_exportUI <- function(id) {
 sc_exportServer <- function(input, output, session, sessionData) {
   
   output$text_summary <- renderUI({
-    print(sessionData)
-    
-    fparams <- sessionData$filter_params()
+    fparams <- sessionData$filter.params()
     
     req(fparams)
     
@@ -57,14 +55,29 @@ sc_exportServer <- function(input, output, session, sessionData) {
   })
   
   report.source <- reactive({
-    req(sessionData$import.params())
+    req(sessionData$import.params(), 
+        sessionData$filter.params())
     
     report <- readLines("sc_report_base.Rmd")
     
-    w <- which(report == "<!-- import.fun -->")
-    report[w] <- make_chunk_from_function_body(sessionData$import.fun(), chunk.name = "import")
+    insert.function <- function(report, tag, fun, chunk.name = "", chunk.options = list()) {
+      w <- which(report == tag)
+      report[w] <- make_chunk_from_function_body(fun, chunk.name = chunk.name, chunk.options = chunk.options)
+      
+      return(report)
+    }
+
+    # Import    
+    report <- insert.function(report, "<!-- import.fun -->", sessionData$import.fun(), chunk.name = "import")
+
+    # Filter
+    report <- insert.function(report, "<!-- filter.fun -->", sessionData$filter.fun(), chunk.name = "filter")
     
-    print(report)
+    w <- which(report == "#-- import_params")
+    report[w] <- list_to_code(sessionData$import.params(), "import.params")
+
+    w <- which(report == "#-- filter_params")
+    report[w] <- list_to_code(sessionData$filter.params(), "filter.params")
     
     return(report)
   })
@@ -80,10 +93,11 @@ sc_exportServer <- function(input, output, session, sessionData) {
   output$report <- downloadHandler(
     filename = "report.html",
     content = function(file) {
-      req(sessionData$import.params())
-
+      req(report.source())
+      
       # Set up parameters to pass to Rmd document
-      params <- list(import.params = sessionData$import.params())
+      params <- list(import.params = sessionData$import.params(),
+                     filter.params = sessionData$filter.params())
       
       report <- report.source()
       
@@ -94,6 +108,17 @@ sc_exportServer <- function(input, output, session, sessionData) {
                         output_file = file,
                         params = params,
                         envir = new.env(parent = globalenv()))
+      
+      # replace dataset server pathname with dataset filename in the rendered html
+      if (sessionData$import.params()$type != "Built-in") {
+        pathname <- sessionData$import.params()$filepath
+        filename <- sessionData$name()
+        
+        final_report <- readLines(file)
+        final_report <- sub(pathname, filename, final_report)
+        
+        writeLines(final_report, file)
+      }
     }
   )
   
