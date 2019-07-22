@@ -72,12 +72,11 @@ sc_exportServer <- function(input, output, session, sessionData) {
 
     # Filter
     report <- insert.function(report, "<!-- filter.fun -->", sessionData$filter.fun(), chunk.name = "filter")
+    report <- insert.function(report, "<!-- barcode.plot -->", sessionData$barcode.plot.fun(), chunk.name = "barcode-plot")
+    report <- insert.function(report, "<!-- violin.plot -->", sessionData$violin.plot.fun(), chunk.name = "violin-plot")
     
-    w <- which(report == "#-- import_params")
-    report[w] <- list_to_code(sessionData$import.params(), "import.params")
-
-    w <- which(report == "#-- filter_params")
-    report[w] <- list_to_code(sessionData$filter.params(), "filter.params")
+    report[ which(report == "#-- import_params") ] <- list_to_code(sessionData$import.params(), "import.params")
+    report[ which(report == "#-- filter_params") ] <- list_to_code(sessionData$filter.params(), "filter.params")
     
     return(report)
   })

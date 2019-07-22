@@ -25,7 +25,29 @@ sc.filter <- function(mat, filter.params) {
       sobj <- FilterCells(sobj, subset.names = "percent.mito", high.thresholds = max.mito)
     }
   })
+  
+  return(sobj)
 }
+
+sc.plot.barcodes <- function(mat, filter.params) {
+  with(filter.params, {
+    umi.per.barcode <- colSums(mat)
+    x <- sort(umi.per.barcode, decreasing = TRUE)
+    plot(x, log="xy", type="l", xlab="Barcodes", ylab="UMI counts")
+    
+    abline(h=c(min.umi, max.umi), lty="dashed", col="darkred")
+    
+    w <- which(x >= min.umi & x <= max.umi)
+    lines(w, x[w], col="green2", lwd=2)
+  })
+}
+
+sc.plot.violins <- function(sobj) {
+  VlnPlot(sobj, features.plot = intersect(c("nUMI", "nGene", "percent.mito"), colnames(sobj@meta.data)), point.size.use = 0.2)
+}
+
+
+
 
 #' UI function for statistics module
 sc_filterUI <- function(id) {
@@ -114,7 +136,7 @@ sc_filterServer <- function(input, output, session, sessionData) {
   #   return(df)
   # })
   
-  filter_params <- reactive({
+  filter.params <- reactive({
     # when changing filter params, invalidate further analyses
     status$vargenes_ready <- FALSE
     status$pca_ready <- FALSE
@@ -142,12 +164,12 @@ sc_filterServer <- function(input, output, session, sessionData) {
   })
   
   sobj_filtered <- reactive({
-    req(sessionData$dataframe(), filter_params())
+    req(sessionData$dataframe(), filter.params())
     
     print("Creating filtered Seurat object...")
     
     withProgress(message = 'Creating Seurat object...', {
-      sobj <- sc.filter(sessionData$dataframe(), filter_params())
+      sobj <- sc.filter(sessionData$dataframe(), filter.params())
     })
     
     return(sobj)
@@ -157,59 +179,42 @@ sc_filterServer <- function(input, output, session, sessionData) {
   output$table_summary <- renderTable({
     df <- sessionData$dataframe()
     
-    min.umi <- filter_params()$min.umi
-    max.umi <- filter_params()$max.umi
-    min.genes <- filter_params()$min.genes
-    max.genes <- filter_params()$max.genes
-    
-    umi.per.barcode <- colSums(df)
-    genes.per.barcode <- colSums(df > 0)
-    
-    snames <- c(
-      "Total barcodes",
-      "Total genes",
-      "Barcodes below min UMI threshold",
-      "Barcodes above max UMI threshold",
-      "Barcodes below min gene threshold",
-      "Barcodes above max gene threshold",
-      "Barcodes passing filters",
-      "Genes passing filters")
-    
-    svalues <- c(
-      ncol(df),
-      nrow(df),
-      sum(umi.per.barcode <= min.umi),
-      sum(umi.per.barcode >= max.umi),
-      sum(genes.per.barcode <= min.genes),
-      sum(genes.per.barcode >= max.genes),
-      ncol(sobj_filtered()@data),
-      nrow(sobj_filtered()@data))
-    
-    dfsum <- data.frame(row.names = snames, Value=svalues)
+    with(filter.params(), {
+      umi.per.barcode <- colSums(df)
+      genes.per.barcode <- colSums(df > 0)
+      
+      snames <- c(
+        "Total barcodes",
+        "Total genes",
+        "Barcodes below min UMI threshold",
+        "Barcodes above max UMI threshold",
+        "Barcodes below min gene threshold",
+        "Barcodes above max gene threshold",
+        "Barcodes passing filters",
+        "Genes passing filters")
+      
+      svalues <- c(
+        ncol(df),
+        nrow(df),
+        sum(umi.per.barcode <= min.umi),
+        sum(umi.per.barcode >= max.umi),
+        sum(genes.per.barcode <= min.genes),
+        sum(genes.per.barcode >= max.genes),
+        ncol(sobj_filtered()@data),
+        nrow(sobj_filtered()@data))
+      
+      dfsum <- data.frame(row.names = snames, Value=svalues)
+    })
     
     return(dfsum)
   }, rownames = TRUE, colnames = FALSE)
     
   output$plot_barcodes <- renderPlot({
-    df <- sessionData$dataframe()
-    
-    min.umi <- filter_params()$min.umi
-    max.umi <- filter_params()$max.umi
-    
-    umi.per.barcode <- colSums(df)
-    x <- sort(umi.per.barcode, decreasing = TRUE)
-    plot(x, log="xy", type="l", xlab="Barcodes", ylab="UMI counts")
-    
-    abline(h=c(min.umi, max.umi), lty="dashed", col="darkred")
-    
-    w <- which(x >= min.umi & x <= max.umi)
-    lines(w, x[w], col="green2", lwd=2)
+    sc.plot.barcodes(sessionData$dataframe(), filter.params())
   })
   
   output$plot_violins <- renderPlot({
-    sobj <- sobj_filtered()
-    
-    VlnPlot(sobj, features.plot = intersect(c("nUMI", "nGene", "percent.mito"), colnames(sobj@meta.data)), point.size.use = 0.2)
+    sc.plot.violins(sobj_filtered())
   })
 
   output$text_num_mito <- renderText({
@@ -224,8 +229,10 @@ sc_filterServer <- function(input, output, session, sessionData) {
   })
   
   sessionData$sobj_filtered <- sobj_filtered
-  sessionData$filter.params <- filter_params
+  sessionData$filter.params <- filter.params
   sessionData$filter.fun <- reactive(sc.filter)
+  sessionData$barcode.plot.fun <- reactive(sc.plot.barcodes)
+  sessionData$violin.plot.fun <- reactive(sc.plot.violins)
   
   return(sessionData)
 }

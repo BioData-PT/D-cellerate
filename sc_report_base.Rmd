@@ -2,7 +2,9 @@
 title: "D-cellerate Reproduceable Report"
 author: "D-cellerate"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_document
+output: 
+  html_document:
+    code_folding: show
 params:
   import.params: NA
   filter.params: NA
@@ -46,16 +48,15 @@ dim(mat)
 #-- filter_params
 ```
 
-```{r}
-filter.params
-```
-
 <!-- filter.fun -->
 
 ```{r}
 dim(sobj@data)
 ```
 
+<!-- barcode.plot -->
+
+<!-- violin.plot -->
 
 # Session Info
 
