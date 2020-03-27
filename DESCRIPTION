@@ -1,0 +1,14 @@
+Package: Dcellerate
+Type: Package
+Title: D-Cellerate
+Version: 1.0
+Authors@R: person("Daniel", "Neves", email = "danielneves2005@gmail.com", role = c("aut", "cre"))
+Description: A Shiny web application that provides a user-friendly user interface for the popular single-cell 
+Depends: R (>= 3.5.1)
+License: GPLv3
+Encoding: UTF-8
+LazyData: true
+biocViews:
+Imports: knitr, rmarkdown, shiny, shinyjs, shinyBS, shinyWidgets, shinydashboard, DT, ggplot2, BiocManager, multtest, Seurat, gridExtra, Matrix, formatR
+
+    
