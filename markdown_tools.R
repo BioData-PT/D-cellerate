@@ -14,7 +14,6 @@ make_chunk_from_function_body <- function(fun, chunk.name="", chunk.options=list
 
   paste(header, paste(body, collapse = "\n") , "```", sep="\n")
 }
-make_chunk_from_function_body(sc.filter, clean.return = TRUE)
 
 list_to_code <- function(l, varname) {
   values <- ifelse(sapply(l, typeof) == "character", paste0("'", l, "'"), l)
@@ -23,8 +22,6 @@ list_to_code <- function(l, varname) {
 
   res 
 }
-
-
 
 list_to_dataframe <- function(l) {
   data.frame(Value=unlist(l), row.names=names(l))

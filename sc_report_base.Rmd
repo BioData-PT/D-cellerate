@@ -5,9 +5,11 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     code_folding: show
+    toc: true
 params:
   import.params: NA
   filter.params: NA
+  pca.params: NA
   all.markers: NA
 ---
 
@@ -18,25 +20,18 @@ knitr::opts_chunk$set(echo = TRUE)
 # Load required packages
 
 ```{r}
-library(shiny)
 library(knitr)
 library(Seurat)
 library(Matrix)
 ```
 
-```{r, include=FALSE}
-list_to_dataframe <- function(l) {
-  data.frame(Value=unlist(l), row.names=names(l))
-}
-```
-
 # Import Data
 
 ```{r}
-#-- import_params
+#-- import.params
 ```
 
-<!-- import.fun -->
+<!-- #import.fun -->
 
 ```{r}
 dim(mat)
@@ -45,18 +40,60 @@ dim(mat)
 # Filter
 
 ```{r}
-#-- filter_params
+#-- filter.params
 ```
 
-<!-- filter.fun -->
+<!-- #filter.fun -->
 
 ```{r}
-dim(sobj@data)
+dim(sobj)
 ```
 
-<!-- barcode.plot -->
+<!-- #barcode.plot.fun -->
 
-<!-- violin.plot -->
+<!-- #violin.plot.fun -->
+
+# Normalize
+
+```{r}
+#-- normalize.params
+```
+
+<!-- #normalize.fun -->
+
+<!-- #normalize.histogram.fun -->
+
+# Variable genes
+
+```{r}
+#-- vargenes.params
+```
+
+<!-- #vargenes.fun -->
+
+<!-- #vargenes.plot.fun -->
+
+# PCA
+
+```{r}
+#-- pca.params
+```
+
+<!-- #scale.fun -->
+
+<!-- #pca.fun -->
+
+<!-- #pca.scree.plot.fun -->
+
+```{r}
+dim1 <- 1; dim2 <- 2; dim3 <- 3
+```
+
+<!-- #pca.plot.fun -->
+
+# Clustering
+
+
 
 # Session Info
 

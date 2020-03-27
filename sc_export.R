@@ -12,6 +12,7 @@ sc_exportUI <- function(id) {
     useShinyjs(),
     summary.ui,
     #uiOutput(ns("uiSections")),
+    bookmarkButton(),
     downloadButton(ns("report"), "Generate report"),
     h4("Debug"),
     verbatimTextOutput(ns("txt_debug"))
@@ -59,24 +60,26 @@ sc_exportServer <- function(input, output, session, sessionData) {
         sessionData$filter.params())
     
     report <- readLines("sc_report_base.Rmd")
+
+    # insert params
+    repw <- grep("^#--", report)
     
-    insert.function <- function(report, tag, fun, chunk.name = "", chunk.options = list()) {
-      w <- which(report == tag)
-      report[w] <- make_chunk_from_function_body(fun, chunk.name = chunk.name, chunk.options = chunk.options)
+    for (w in repw) {
+      params.name <- sub('^#-- (.*)$', '\\1', report[w])
       
-      return(report)
+      print(params.name)
+      
+      report[w] <- list_to_code(sessionData[[ params.name ]](), params.name)
     }
-
-    # Import    
-    report <- insert.function(report, "<!-- import.fun -->", sessionData$import.fun(), chunk.name = "import")
-
-    # Filter
-    report <- insert.function(report, "<!-- filter.fun -->", sessionData$filter.fun(), chunk.name = "filter")
-    report <- insert.function(report, "<!-- barcode.plot -->", sessionData$barcode.plot.fun(), chunk.name = "barcode-plot")
-    report <- insert.function(report, "<!-- violin.plot -->", sessionData$violin.plot.fun(), chunk.name = "violin-plot")
     
-    report[ which(report == "#-- import_params") ] <- list_to_code(sessionData$import.params(), "import.params")
-    report[ which(report == "#-- filter_params") ] <- list_to_code(sessionData$filter.params(), "filter.params")
+    # insert chunks
+    repw <- grep("^<!-- #", report)
+    
+    for (w in repw) {
+      fun.name <- sub('^<!-- #(.*) -->', '\\1', report[w])
+      
+      report[w] <- make_chunk_from_function_body(sessionData[[ fun.name ]](), chunk.name = fun.name, chunk.options = list())
+    }
     
     return(report)
   })
@@ -96,17 +99,23 @@ sc_exportServer <- function(input, output, session, sessionData) {
       
       # Set up parameters to pass to Rmd document
       params <- list(import.params = sessionData$import.params(),
-                     filter.params = sessionData$filter.params())
+                     filter.params = sessionData$filter.params(),
+                     pca.params = sessionData$pca.params())
       
       report <- report.source()
       
       tempReport <- file.path(tempdir(), "sc_report.Rmd")
       writeLines(report, con = tempReport, sep="\n")
 
-      rmarkdown::render(tempReport,
-                        output_file = file,
-                        params = params,
-                        envir = new.env(parent = globalenv()))
+      env <- new.env()
+      assign("datasets", readRDS("data/example_datasets.rds"), env)
+      
+      withProgress(message = "Generating report (this may take a while)...", {
+        rmarkdown::render(tempReport,
+                          output_file = file,
+                          params = params,
+                          envir = env)
+      })
       
       # replace dataset server pathname with dataset filename in the rendered html
       if (sessionData$import.params()$type != "Built-in") {

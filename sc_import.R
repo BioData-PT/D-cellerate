@@ -1,7 +1,6 @@
 
 #source("tableImportModule.R")
 
-
 import.tabular <- function(import.params) {
   mat <- read.table(import.params$filepath,
                     header = import.params$header, 
@@ -21,8 +20,8 @@ import.cellranger.hdf5 <- function(import.params) {
   mat <- Read10X_h5(import.params$filepath)
 }
 
-import.example <- function(import.params) {
-  mat <- example.datasets[[ import.params$dataset ]]$dataframe
+import.example <- function(datasets, import.params) {
+  mat <- datasets[[ import.params$dataset ]]$dataframe
 }
 
 #' UI function for table import module
@@ -52,7 +51,7 @@ datasetImportServer <- function(input, output, session, datasets) {
   })
   
   dataframe <- reactive({
-    import.example(import.params())
+    import.example(datasets, import.params())
   })
   
   name <- reactive({
@@ -195,6 +194,8 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
   datasetImportData <- callModule(datasetImportServer, "dataset_import", datasets)
   
   import.data <- reactive({
+    sessionData$status$data_ready <- FALSE
+    
     if (input$radioImport == "file") {
       req(fileImportData$dataframe())
     } else {
@@ -230,6 +231,18 @@ sc_importServer <- function(input, output, session, datasets, sessionData) {
                  sep="<br/>")
     
     return (HTML(txt))
+  })
+  
+  observe({
+    tab <- dataframe()
+    
+    is.valid <- (!is.null(tab))
+    
+    print(is.valid)
+    
+    sessionData$status$data_ready <- is.valid
+    
+    return(is.valid)
   })
 
   sessionData$dataframe <- dataframe

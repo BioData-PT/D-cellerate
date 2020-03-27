@@ -1,3 +1,14 @@
+
+plot.pca.scree <- function(sobj) {
+  ElbowPlot(sobj, ndims = length(sobj[["pca"]]@stdev))
+}
+
+plot.pca <- function(sobj, dim1=1, dim2=2, dim3=3) {
+  p1 <- DimPlot(sobj, dims = c(dim1, dim2))
+  p2 <- DimPlot(sobj, dims = c(dim3, dim2))
+  CombinePlots(plots = list(p1, p2), legend="none")
+}
+
 sc_pcavizUI <- function(id, show.scree=TRUE) {
   ns <- NS(id)
   
@@ -30,22 +41,19 @@ sc_pcavizServer <- function(input, output, session, sobj, cluster.name=NA) {
   output$plot_pca <- renderPlot({
     req(sobj())
  
-    .sobj <- sobj()
-    
-    if (!is.na(cluster.name)) {
-      .sobj <- SetAllIdent(.sobj, cluster.name)
-      print("New ident")
-    }
-    
-    table(.sobj@ident)
+    # if (!is.na(cluster.name)) {
+    #   .sobj <- SetAllIdent(.sobj, cluster.name)
+    #   print("New ident")
+    # }
+    # 
+    # table(.sobj@ident)
     
     dim1 <- input$num_pc1
     dim2 <- input$num_pc2
     dim3 <- input$num_pc3
     
-    p1 <- PCAPlot(object = .sobj, dim.1 = dim1, dim.2 = dim2, do.return=TRUE) + theme(legend.pos="none")
-    p2 <- PCAPlot(object = .sobj, dim.1 = dim3, dim.2 = dim2, do.return=TRUE) 
-    grid.arrange(p1, p2, ncol=2)
+    plot.pca(sobj(), dim1, dim2, dim3)
+    
   }, height = function() {
     session$clientData[[ paste0("output_", session$ns("plot_pca"), "_width") ]] / 2
   })
@@ -53,10 +61,16 @@ sc_pcavizServer <- function(input, output, session, sobj, cluster.name=NA) {
   output$plot_scree <- renderPlot({
     req(sobj())
     
-    eigs <- sobj()@dr$pca@sdev**2
-    props <- eigs / sum(eigs)
-    plot(props, ylab="Proportion of variance", xlab="Principal Component", pch=20, cex=1.5)
+    # eigs <- sobj()@dr$pca@sdev**2
+    # props <- eigs / sum(eigs)
+    # plot(props, ylab="Proportion of variance", xlab="Principal Component", pch=20, cex=1.5)
+    plot.pca.scree(sobj())
   })
+  
+  return(list(
+    scree.plot = plot.pca.scree,
+    pca.plot = plot.pca
+  ))
   
 }
 
@@ -90,13 +104,13 @@ sc_tsnevizServer <- function(input, output, session, status, sobj, cluster.name=
         selected <- "Renamed Clusters"
       }
     } else {
-        choices <- c("nUMI", "nGene")
-        selected <- "nUMI"
+        choices <- c("nCount_RNA", "nFeature_RNA", "percent.mito")
+        selected <- "nCount_RNA"
         
         if (status$pca_ready == TRUE) {
           req(sobj())
           
-          choices <- c(choices, colnames(sobj()@dr$pca@cell.embeddings))
+          choices <- c(choices, colnames(sobj()@reductions$pca@cell.embeddings))
         }
     }
     
@@ -108,18 +122,21 @@ sc_tsnevizServer <- function(input, output, session, status, sobj, cluster.name=
 
     choice <- input$sel_col_by
     
-    if ((choice %in% c("nGene", "nUMI")) | grepl("^PC", choice)) {
-      FeaturePlot(sobj(), features.plot = choice, reduction.use = "tsne", no.legend = !input$check_legend)
+    if ((choice %in% c("nCount_RNA", "nFeature_RNA", "percent.mito")) | grepl("^PC", choice)) {
+      FeaturePlot(sobj(), features = choice, reduction = "tsne") 
     } else {
       .sobj <- sobj()
       
       if (choice == "Original Clusters") {
-        .sobj <- SetAllIdent(.sobj, "original.clusters")
+        #.sobj <- SetAllIdent(.sobj, "original.clusters")
+        Idents(.sobj) <- .sobj@meta.data$original.clusters
       } else if (choice == "Renamed Clusters") {
-        .sobj <- SetAllIdent(.sobj, "new.clusters")
+        #.sobj <- SetAllIdent(.sobj, "new.clusters")
+        Idents(.sobj) <- .sobj@meta.data$new.clusters
       }
       
-      TSNEPlot(.sobj, do.label = TRUE)
+      #TSNEPlot(.sobj, do.label = TRUE)
+      DimPlot(.sobj, reduction = "tsne", label=TRUE)
     }
         
     # if (!is.na(cluster.name)) {

@@ -4,7 +4,7 @@ sc.filter <- function(mat, filter.params) {
   umi.per.barcode <- colSums(mat)
   genes.per.barcode <- colSums(mat > 0)
   
-  with(filter.params, {
+  sobj <- with(filter.params, {
     mat <- mat[ , which(
       umi.per.barcode >= min.umi 
       & umi.per.barcode <= max.umi 
@@ -15,20 +15,25 @@ sc.filter <- function(mat, filter.params) {
     
     mat <- mat[ which(cells.per.gene >= min.cells),, drop=FALSE ]
     
-    sobj <- CreateSeuratObject(raw.data = mat)
+    sobj <- CreateSeuratObject(counts = mat)
     
     if (mito.pattern != "") {
-      mito.genes <- grep(mito.pattern, rownames(sobj@data), value = TRUE)
-      percent.mito <- Matrix::colSums(sobj@data[mito.genes, ]) / Matrix::colSums(sobj@data)
-      sobj <- AddMetaData(sobj, metadata = percent.mito, col.name = "percent.mito")
+      sobj[["percent.mito"]] <- PercentageFeatureSet(sobj, pattern = mito.pattern)
       
-      sobj <- FilterCells(sobj, subset.names = "percent.mito", high.thresholds = max.mito)
+      sobj <- sobj[ , which(sobj@meta.data$percent.mito <= max.mito) ]
     }
+    
+    if (!is.na(sample.size)) {
+      sobj <- sobj[ , sample(1:dim(sobj)[2], sample.size) ]
+    }
+    
+    sobj
   })
   
   return(sobj)
 }
 
+# barcodes plot
 sc.plot.barcodes <- function(mat, filter.params) {
   with(filter.params, {
     umi.per.barcode <- colSums(mat)
@@ -42,8 +47,9 @@ sc.plot.barcodes <- function(mat, filter.params) {
   })
 }
 
+# violin plots
 sc.plot.violins <- function(sobj) {
-  VlnPlot(sobj, features.plot = intersect(c("nUMI", "nGene", "percent.mito"), colnames(sobj@meta.data)), point.size.use = 0.2)
+  VlnPlot(sobj, features = intersect(c("nCount_RNA", "nFeature_RNA", "percent.mito"), colnames(sobj@meta.data)), pt.size = 0.2)
 }
 
 
@@ -81,7 +87,7 @@ sc_filterUI <- function(id) {
   
   more.mito <- tagList(
     helpText("Filter cells based on percentage of mitochondrial RNA."),
-    numericInput(ns("num_max_mito"), "Max Mitochodrial RNA Ratio", value = 1, min = 0)
+    numericInput(ns("num_max_mito"), "Max Mitochodrial RNA Ratio", value = 100, min = 0)
   )
   
   options.ui <- 
@@ -100,10 +106,13 @@ sc_filterUI <- function(id) {
       #checkboxInput(ns("check_mito"), label = "Analyse mitochidrial RNA", value = FALSE),
       #conditionalPanel(condition = paste0("input['", ns("check_mito"), "']", " == true"), mito.ui)
       mito.ui,
-      conditionalPanel(condition = paste0("input['", ns("text_mito_pattern"), "']", ' != ""'), more.mito)
-      #selectInput(ns("sel_pca_genes"), label = "Genes to use", 
-      #            choices = c("All genes", "Variable genes"), selected = "Variable genes"),
-      #numericInput(ns("num_pcs"), "Number of PCs to compute", value = 40, min = 0)
+      conditionalPanel(condition = paste0("input['", ns("text_mito_pattern"), "']", ' != ""'), more.mito),
+      h4("Sampling options"),
+      helpText("Randomly sample a subset of cells passing filters. This allows for quicker",
+               "exploration, before using the full dataset."),
+      checkboxInput(ns("check_sample"), label = "Sample cells", value=FALSE),
+      conditionalPanel(condition = paste0("input['", ns("check_sample"), "']", ' == true'), 
+                       numericInput(ns("num_sample"), label = "Number of cells", value = 1000))
     )
   
   fluidRow(
@@ -149,7 +158,8 @@ sc_filterServer <- function(input, output, session, sessionData) {
       max.genes = input$num_max_genes,
       min.cells = input$num_min_cells,
       mito.pattern = input$text_mito_pattern,
-      max.mito = input$num_max_mito
+      max.mito = input$num_max_mito,
+      sample.size = ifelse(input$check_sample == TRUE, input$num_sample, NA)
     )
   })
   
@@ -164,6 +174,9 @@ sc_filterServer <- function(input, output, session, sessionData) {
   })
   
   sobj_filtered <- reactive({
+    sessionData$status$filter_ready <- FALSE
+    sessionData$status$normalize_ready <- FALSE
+    
     req(sessionData$dataframe(), filter.params())
     
     print("Creating filtered Seurat object...")
@@ -172,14 +185,17 @@ sc_filterServer <- function(input, output, session, sessionData) {
       sobj <- sc.filter(sessionData$dataframe(), filter.params())
     })
     
+    sessionData$status$filter_ready <- TRUE
+    
     return(sobj)
   })
   
     
   output$table_summary <- renderTable({
     df <- sessionData$dataframe()
+    sobj <- sobj_filtered()
     
-    with(filter.params(), {
+    dfsum <- with(filter.params(), {
       umi.per.barcode <- colSums(df)
       genes.per.barcode <- colSums(df > 0)
       
@@ -200,10 +216,10 @@ sc_filterServer <- function(input, output, session, sessionData) {
         sum(umi.per.barcode >= max.umi),
         sum(genes.per.barcode <= min.genes),
         sum(genes.per.barcode >= max.genes),
-        ncol(sobj_filtered()@data),
-        nrow(sobj_filtered()@data))
+        dim(sobj)[2],
+        dim(sobj)[1])
       
-      dfsum <- data.frame(row.names = snames, Value=svalues)
+      data.frame(row.names = snames, Value=svalues)
     })
     
     return(dfsum)
@@ -221,7 +237,7 @@ sc_filterServer <- function(input, output, session, sessionData) {
     sobj <- sobj_filtered()
     
     if (input$text_mito_pattern != "") {
-      mito.genes <- grep(input$text_mito_pattern, rownames(sobj@data), value = TRUE)
+      mito.genes <- grep(input$text_mito_pattern, rownames(sobj), value = TRUE)
       return(paste0("Number of mitochondrial genes: ", length(mito.genes)))
     } else {
       return(paste0("Skip."))
