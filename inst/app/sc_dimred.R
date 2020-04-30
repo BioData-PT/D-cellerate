@@ -61,6 +61,62 @@ sc.pca <- function(sobj, pca.params) {
 
 }
 
+#-------------------------------------------------------------------------------------------
+#
+## AGGS code:
+
+sc.cluster <- function( sobj, cluster.params ) {
+  if ( cluster.params$sel_cluster_method == "0" ) {
+    sobj <- sobj 
+  } else {
+    resolution <- cluster.params$resolution
+    ndims <- cluster.params$ndims
+    algorithm <- cluster.params$algorithm
+    sobj <- FindNeighbors( sobj, reduction = "pca", dims = 1:ndims )
+    sobj <- FindClusters( sobj, resolution = resolution, algorithm = algorithm ) 
+    sobj@meta.data$original.clusters <- Idents( sobj )
+  }
+  return( sobj )
+}
+
+#sc.cluster.names <- function( sobj ) {
+#  from <- sort( unique( sobj@meta.data$original.clusters ) )
+#  to <- sapply( paste0( "text_cluster_to_", from ), function(x) input[[ x ]] )
+#  do.call( req, lapply( paste0("text_cluster_to_", from ), function(x) input[[ x ]] ) )
+#  df <- data.frame( from = from, to = to, stringsAsFactors = FALSE )
+#  return( df )
+#}
+
+sc.cluster.renamed <- function( sobj, cluster.params, cluster.renamed.params ) {
+  if ( cluster.params$renamed == TRUE) {
+    df <- data.frame( from = cluster.renamed.params$from, 
+                      to = cluster.renamed.params$to, stringsAsFactors = FALSE )
+    clusters <- df
+    sobj@meta.data$new.clusters <- plyr::mapvalues( sobj@meta.data$original.clusters, 
+                                                    from = clusters$from, to = clusters$to )
+  } else { 
+    sobj@meta.data$new.clusters <- sobj@meta.data$original.clusters
+  }
+  Idents( sobj ) <- sobj@meta.data$new.clusters
+  return( sobj )
+}
+
+sc.tsne <- function( sobj, tsne.params ) {
+  sobj <- RunTSNE(sobj, 
+                  dims = 1:tsne.params$pcnum, 
+                  perplexity = tsne.params$perplexity, 
+                  seed.use = tsne.params$seed)
+  return(sobj)
+}
+
+sc.tsne.cluster <- function( sobj, sobj.cluster ) {
+  sobj@meta.data$original.clusters <- sobj.cluster@meta.data$original.clusters
+  sobj@meta.data$new.clusters <- sobj.cluster@meta.data$new.clusters
+  Idents(sobj) <- sobj@meta.data$new.clusters
+  return(sobj)
+}
+
+#-------------------------------------------------------------------------------------------
 
 #' UI function for statistics module
 sc_dimredUI <- function(id) {
@@ -241,79 +297,63 @@ sc_dimredServer <- function(input, output, session, sessionData) {
   # Clustering
   #
   
-  cluster.params <- reactive({
+  #---------------------------------------------------------------------------------------
+  #
+  ## AGGS code:
+  
+  cluster.params <- reactive( {
     list(
+      sel_cluster_method = input$sel_cluster_method,
       resolution = input$num_resolution,
       ndims = input$num_pca,
-      algorithm = as.numeric(input$sel_cluster_method)
-    )
-  })
+      algorithm = as.numeric(input$sel_cluster_method), 
+      renamed = input$check_rename
+      )
+  } )
   
   sobj_cluster <- reactive({
-    if (input$sel_cluster_method == "0") {
-      req(sobj_pca())
-      
-      sobj <- sobj_pca()
-    } else {
-      req(sobj_pca())
-      
-      sobj <- sobj_pca()
-      resolution <- input$num_resolution    
-      ndims <- input$num_pca
-      algorithm <- as.numeric(input$sel_cluster_method)
-      
-      print(algorithm)
-      
-      print("Finding clusters...")
-      
-      withProgress(message = 'Finding clusters...', {
-        sobj <- FindNeighbors(sobj, reduction = "pca", dims = 1:ndims)
-        sobj <- FindClusters(sobj, resolution = resolution, algorithm = algorithm)
-        
-        # sobj <- FindClusters(sobj, reduction.type = "pca", dims.use = 1:ndims, 
-        #                      resolution = resolution, print.output = 0, save.SNN = FALSE)
-      })
-      
-      sobj@meta.data$original.clusters <- Idents(sobj)
-      
-      status$clustering_ready <- TRUE
-    }
+    req(sobj_pca())
+    sobj <- sobj_pca()
+    
+    print("Finding clusters...")
+    
+    withProgress(message = 'Finding clusters...', {
+      sobj <- sc.cluster( sobj, cluster.params() )
+    })
+    
+    status$clustering_ready <- TRUE
     
     return(sobj)
   })
   
-  cluster_names <- reactive({
+  #cluster_names <- reactive({
+  #  req(sobj_cluster())
+  #  sobj <- sobj_cluster()
+  #  df <- sc.cluster.names( sobj )
+  #  return(df)
+  #})
+  
+  cluster.renamed.params <- reactive( {
     req(sobj_cluster())
-    
     sobj <- sobj_cluster()
-    
-    from <- sort(unique(sobj@meta.data$original.clusters))
-    to <- sapply(paste0("text_cluster_to_", from), function(x) input[[ x ]])
-    
-    do.call(req, lapply(paste0("text_cluster_to_", from), function(x) input[[ x ]]))
-    
-    df <- data.frame(from=from, to=to, stringsAsFactors = FALSE)
-    
-    return(df)
-  })
+    from <- sort( unique( sobj@meta.data$original.clusters ) )
+    to <- sapply( paste0( "text_cluster_to_", from ), function(x) input[[ x ]] )
+    list(
+      from = from,
+      to = to
+    )
+    #do.call( req, lapply( paste0("text_cluster_to_", from ), function(x) input[[ x ]] ) ) ## WARNING: this may need to be included in the future
+    } )
   
   sobj_cluster_renamed <- reactive({
     req(sobj_cluster())
-    
     sobj <- sobj_cluster()
+    sobj <- sc.cluster.renamed( sobj, cluster.params(), cluster.renamed.params() )
     
-    if (input$check_rename == TRUE) {
-      clusters <- cluster_names()
-      
-      sobj@meta.data$new.clusters <- plyr::mapvalues(sobj@meta.data$original.clusters, from=clusters$from, to=clusters$to)
-    } else {    
-      sobj@meta.data$new.clusters <- sobj@meta.data$original.clusters
-    }
-    
-    Idents(sobj) <- sobj@meta.data$new.clusters
-
     return(sobj)
   })
+  
+  #---------------------------------------------------------------------------------------
   
   output$ui_rename <- renderUI({
     req(sobj_cluster())
@@ -336,63 +376,61 @@ sc_dimredServer <- function(input, output, session, sessionData) {
   #
   # t-SNE
   #
+
+  #---------------------------------------------------------------------------------------
+  #
+  ## AGGS code:
+  
+  tsne.params <- reactive( { 
+    list( 
+      pcnum = input$num_tsne_pca,
+      perplexity = input$num_perplexity,
+      seed = input$num_tse_seed
+    )
+  } )
   
   sobj_tsne <- reactive({
     req(sobj_pca())
-    
     sobj <- sobj_pca()
-    pcnum <- input$num_tsne_pca
-    perplexity <- input$num_perplexity
-    seed <- input$num_tse_seed
-    
     print("Running t-SNE projection...")
-    
     withProgress(message = 'Running t-SNE projection...', {
-      sobj <- RunTSNE(sobj, dims = 1:pcnum, perplexity=perplexity, seed.use = seed)
+      sobj <- sc.tsne( sobj, tsne.params() )
     })
-    
     status$tsne_ready <- TRUE
-    
     return(sobj)
   })
   
   # add clustering information to t-SNE object
   sobj_tsne_cluster <- reactive({
-    #if (status$ready == TRUE) {
-      req(sobj_cluster(), sobj_tsne())
-      
-      sobj.cluster <- sobj_cluster_renamed()
-      sobj <- sessionData$sobj_tsne()
-      
-      print("Adding clustering to t-SNE...")
-      
-      sobj@meta.data$original.clusters <- sobj.cluster@meta.data$original.clusters
-      sobj@meta.data$new.clusters <- sobj.cluster@meta.data$new.clusters
-      
-      Idents(sobj) <- sobj@meta.data$new.clusters
-      
-      #sobj <- SetAllIdent(sobj, "new.clusters")
-    # } else {
-    #   req(sobj_tsne())
-    #   
-    #   sobj <- sobj_tsne()
-    # }
-    
+    req(sobj_cluster(), sobj_tsne())
+    sobj.cluster <- sobj_cluster_renamed()
+    sobj <- sessionData$sobj_tsne()
+    print("Adding clustering to t-SNE...")
+    sobj <- sc.tsne.cluster( sobj, sobj.cluster )
     return(sobj)
   })
-  
+
+  #---------------------------------------------------------------------------------------  
   
   #
   # Final setup
   #
   
   pca.viz <- callModule(sc_pcavizServer, "sc_pcaviz", sobj_cluster)
-  callModule(sc_tsnevizServer, "sc_tsneviz", status, sobj_tsne_cluster)
+  tsne.viz <- callModule(sc_tsnevizServer, "sc_tsneviz", status, sobj_tsne_cluster)
   
   sessionData$sobj_pca <- sobj_pca
   sessionData$sobj_tsne <- sobj_tsne
-  sessionData$sobj_cluster <- sobj_cluster_renamed
+  sessionData$cluster.params <- cluster.params #aggs
+  sessionData$cluster.fun <- reactive(sc.cluster) #aggs
+  sessionData$cluster.renamed.params <- cluster.renamed.params # aggs
+  sessionData$cluster.renamed.fun <- reactive(sc.cluster.renamed) #aggs 
+  sessionData$sobj_cluster <- sobj_cluster_renamed 
   sessionData$sobj_tsne_cluster <- sobj_tsne_cluster
+  sessionData$tsne.params <- tsne.params #aggs
+  sessionData$tsne.fun <- reactive(sc.tsne) #aggs
+  sessionData$tsne.cluster.fun <- reactive(sc.tsne.cluster) #aggs
+  sessionData$plot.tsne.fun <- reactive(tsne.viz$plot.tsne) #aggs: add plot t-SNE to Rmd - ABORT IT - does not work as expected.
   
   sessionData$vargenes.params <- vargenes.params
   sessionData$vargenes.fun <- reactive(sc.vargenes)
@@ -407,5 +445,6 @@ sc_dimredServer <- function(input, output, session, sessionData) {
   
   return(sessionData)
 }
+
 
 

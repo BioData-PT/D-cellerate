@@ -10,12 +10,21 @@ params:
   import.params: NA
   filter.params: NA
   pca.params: NA
+  cluster.params: NA
+  cluster.renamed.params: NA
+  tsne.params: NA
   all.markers: NA
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+<br>
+
+---
+
+<br>
 
 # Load required packages
 
@@ -25,6 +34,12 @@ library(Seurat)
 library(Matrix)
 ```
 
+<br>
+
+---
+
+<br>
+
 # Import Data
 
 ```{r}
@@ -33,9 +48,19 @@ library(Matrix)
 
 <!-- #import.fun -->
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 dim(mat)
 ```
+
+<br>
+
+This data set contains `r dim(mat)[1]` genes and `r dim(mat)[2]` cells. <!-- aggs -->
+
+<br>
+
+---
+
+<br>
 
 # Filter
 
@@ -45,13 +70,26 @@ dim(mat)
 
 <!-- #filter.fun -->
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 dim(sobj)
 ```
+
+
+<br> <!-- aggs --> 
+
+The filtered data set contains `r dim(sobj)[1]` genes and `r dim(sobj)[2]` cells. <!-- aggs -->
 
 <!-- #barcode.plot.fun -->
 
 <!-- #violin.plot.fun -->
+
+<!-- aggs -->
+
+<br>
+
+---
+
+<br>
 
 # Normalize
 
@@ -63,6 +101,12 @@ dim(sobj)
 
 <!-- #normalize.histogram.fun -->
 
+<br>
+
+---
+
+<br>
+
 # Variable genes
 
 ```{r}
@@ -72,6 +116,12 @@ dim(sobj)
 <!-- #vargenes.fun -->
 
 <!-- #vargenes.plot.fun -->
+
+<br>
+
+---
+
+<br>
 
 # PCA
 
@@ -91,14 +141,76 @@ dim1 <- 1; dim2 <- 2; dim3 <- 3
 
 <!-- #pca.plot.fun -->
 
+<br>
+
+---
+
+<br>
+
 # Clustering
 
+<!-- aggs -->
 
+```{r}
+#-- cluster.params
+```
+
+<!-- #cluster.fun -->
+
+```{r}
+#-- cluster.renamed.params
+```
+
+<!-- #cluster.renamed.fun -->
+
+
+<br>
+
+---
+
+<br>
+
+# Dimensional reduction
+
+```{r}
+#-- tsne.params
+```
+
+<!-- #tsne.fun -->
+
+```{r}
+DimPlot(sobj, reduction = "tsne", label = TRUE)
+```
+
+
+<!-- plot.tsne.fun -->
+
+<!-- aggs -->
+
+<br>
+
+---
+
+<br>
+
+# Marker Gene Identification
+
+```{r}
+
+```
+
+
+<br>
+
+---
+
+<br>
 
 # Session Info
 
 ```{r}
 sessionInfo()
 ```
+
 
 

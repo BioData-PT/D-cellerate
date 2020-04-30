@@ -1,4 +1,4 @@
-# Single-cell analysis pipeline 
+  # Single-cell analysis pipeline 
 
 # devtools::install_github('rstudio/DT')
 
@@ -9,7 +9,7 @@ library(shinyBS)
 library(shinyjs)
 library(shinydashboard)
 library(shinyWidgets)
-  
+      
 library(Seurat)
 library(gridExtra)
 
@@ -17,7 +17,7 @@ library(Matrix)
 
 library(formatR)
   
-# options(shiny.reactlog=TRUE)
+# options(shiny.reactlog=TRUE)  
 # options(shiny.trace=TRUE)
 
 #source("tableFilterModule.R")
@@ -27,7 +27,7 @@ source("sc_import.R")
 source("sc_filter.R")
 source("sc_normalize.R")
 source("sc_dimred.R")
-source("sc_cluster.R")
+# source("sc_cluster.R") # aggs     
 source("sc_markers.R")
 source("sc_export.R")
 
@@ -75,7 +75,9 @@ server <- function(input, output, session) {
       vargenes_ready = FALSE, 
       pca_ready = FALSE, 
       clustering_ready = FALSE,
-      tsne_ready = FALSE)
+      tsne_ready = FALSE, 
+      marker_ready = FALSE #aggs 
+      )
   )
 
   output$status <- renderMenu({
@@ -149,18 +151,19 @@ server <- function(input, output, session) {
         menuItem("Filter", tabName="Filter", icon = icon("filter")),
         menuItem("Normalize", tabName="Normalize", icon = icon("vials")),
         menuItem("Reduce Dimensions and Cluster", tabName="ReduceDimensions", icon = icon("project-diagram")),
-        menuItem("Marker Gene Identification", tabName="DifferentialExpression"),
-        menuItem("Export Analysis", tabName = "ExportAnalysis")
+        menuItem("Marker Gene Identification", tabName="DifferentialExpression", icon = icon("fingerprint")), #aggs
+        menuItem("Export Analysis", tabName = "ExportAnalysis", icon = icon("cloud-download")) #aggs  
       )
     } else {
       analysis.tabs <- tagList()
     }
-    
+      
     sidebarMenu(
       id = "tabs",
       tags$style(".fa-filter {color:", colors[ sessionData$status$filter_ready + 1 ], "}"),
       tags$style(".fa-vials {color:", colors[ sessionData$status$normalize_ready + 1 ], "}"),
       tags$style(".fa-project-diagram {color:", colors[ sessionData$status$clustering_ready + 1 ], "}"),
+      tags$style(".fa-fingerprint {color:", colors[ sessionData$status$marker_ready + 1 ], "}"), #aggs
       menuItem("Import Data", tabName="ImportData", icon = icon("cloud-upload"), selected = TRUE),
       analysis.tabs
     )
@@ -184,4 +187,5 @@ server <- function(input, output, session) {
 print("Launching application...")
 
 shinyApp(ui, server, enableBookmarking = "server")
+
 
