@@ -66,9 +66,7 @@ sc_exportServer <- function(input, output, session, sessionData) {
     
     for (w in repw) {
       params.name <- sub('^#-- (.*)$', '\\1', report[w])
-      
       print(params.name)
-      
       report[w] <- list_to_code(sessionData[[ params.name ]](), params.name)
     }
     
@@ -104,7 +102,8 @@ sc_exportServer <- function(input, output, session, sessionData) {
                      cluster.params = sessionData$cluster.params(), 
                      cluster.renamed.params = sessionData$cluster.renamed.params(), 
                      tsne.params = sessionData$tsne.params(), 
-                     all.markers = sessionData$all_markers())
+                     marker.params = sessionData$marker.params(), # aggs
+                     markers.params = sessionData$markers.params())
       
       report <- report.source()
       
@@ -151,7 +150,6 @@ sc_exportServer <- function(input, output, session, sessionData) {
   #                       envir = new.env(parent = globalenv()))
   #   }
   # )
-  
   
   return(sessionData)
   
