@@ -74,6 +74,26 @@ sc_pcavizServer <- function(input, output, session, sobj, cluster.name=NA) {
   
 }
 
+#--------------------------------------------------------------------------------------------
+#
+## AGGS code:
+
+plot.tsne <- function( sobj, choice ) { # WARNING: change choice to allow multiple inputs
+  if ( ( choice %in% c( "nCount_RNA", "nFeature_RNA", "percent.mito" ) ) | grepl("^PC", choice) ) {
+    FeaturePlot( sobj, features = choice, reduction = "tsne" )
+  } else {
+    .sobj <- sobj
+    if ( choice == "Original Clusters" ) {
+      Idents(.sobj) <- .sobj@meta.data$new.clusters # TAKE ATTENTION TO THE NAME OF A CLT
+    } else if (choice == "Renamed Clusters") {
+      Idents(.sobj) <- .sobj@meta.data$new.clusters
+    }
+    DimPlot( .sobj, reduction = "tsne", label = TRUE )
+  }
+} 
+
+#-------------------------------------------------------------------------------------------
+
 
 sc_tsnevizUI <- function(id) {
   ns <- NS(id)
@@ -114,45 +134,22 @@ sc_tsnevizServer <- function(input, output, session, status, sobj, cluster.name=
         }
     }
     
-    updateSelectInput(session, "sel_col_by", choices=choices, selected = selected)
+    updateSelectInput(session, "sel_col_by", choices = choices, selected = selected)
   })
   
   output$plot_tsne <- renderPlot({
     req(sobj())
 
-    choice <- input$sel_col_by
+    choice <- input$sel_col_by # aggs
+    plot.tsne( sobj(), choice )
     
-    if ((choice %in% c("nCount_RNA", "nFeature_RNA", "percent.mito")) | grepl("^PC", choice)) {
-      FeaturePlot(sobj(), features = choice, reduction = "tsne") 
-    } else {
-      .sobj <- sobj()
-      
-      if (choice == "Original Clusters") {
-        #.sobj <- SetAllIdent(.sobj, "original.clusters")
-        Idents(.sobj) <- .sobj@meta.data$original.clusters
-      } else if (choice == "Renamed Clusters") {
-        #.sobj <- SetAllIdent(.sobj, "new.clusters")
-        Idents(.sobj) <- .sobj@meta.data$new.clusters
-      }
-      
-      #TSNEPlot(.sobj, do.label = TRUE)
-      DimPlot(.sobj, reduction = "tsne", label=TRUE)
-    }
-        
-    # if (!is.na(cluster.name)) {
-    #   .sobj <- SetAllIdent(.sobj, cluster.name)
-    #   
-    #   TSNEPlot(.sobj, do.label = TRUE)
-    # } else {
-    #   
-    # }
+  })   
+  return(list(
+    plot.tsne = plot.tsne
+  ))
 
-  })
-  #, height = function() {
-  #  session$clientData[[ paste0("output_", session$ns("plot_tsne"), "_width") ]] 
-  #})
-  
 }
+
 
 
 

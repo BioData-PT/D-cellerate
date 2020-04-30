@@ -100,7 +100,11 @@ sc_exportServer <- function(input, output, session, sessionData) {
       # Set up parameters to pass to Rmd document
       params <- list(import.params = sessionData$import.params(),
                      filter.params = sessionData$filter.params(),
-                     pca.params = sessionData$pca.params())
+                     pca.params = sessionData$pca.params(), 
+                     cluster.params = sessionData$cluster.params(), 
+                     cluster.renamed.params = sessionData$cluster.renamed.params(), 
+                     tsne.params = sessionData$tsne.params(), 
+                     all.markers = sessionData$all_markers())
       
       report <- report.source()
       
@@ -152,6 +156,7 @@ sc_exportServer <- function(input, output, session, sessionData) {
   return(sessionData)
   
 }
+
 
 
 

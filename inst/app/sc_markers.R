@@ -51,7 +51,7 @@ sc_markersUI <- function(id) {
       helpText("Select options for marker gene discovery."),
       selectInput(ns("sel_test"), label="Test to use", 
                   choices=c("Wilcoxon rank sum"="wilcox", 
-                            "Student's t-test"="ttest",
+                            "Student's t-test"="t", #aggs
                             "Standard AUC classifier"="roc")),
       numericInput(ns("num_logfc"), label = "LogFC threshold", value=0.25),
       helpText("Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells. Default is 0.25 Increasing logfc.threshold speeds up the function, but can miss weaker signals."),
@@ -110,7 +110,8 @@ sc_markersServer <- function(input, output, session, sessionData) {
         
         if (is.null(new_markers[[ cl ]])) {
           df <- FindMarkers(sobj, ident.1 = cl, only.pos = TRUE, 
-                            min.pct = min.pct, logfc.threshold = logfc.threshold)
+                            min.pct = min.pct, logfc.threshold = logfc.threshold, 
+                            test.use = input$sel_test)
           df <- df[ df$p_val_adj < 0.01, ]
           df$cluster <- cl
           df$gene <- rownames(df)
@@ -194,16 +195,19 @@ sc_markersServer <- function(input, output, session, sessionData) {
   })
   
   de_result <- reactive({
+    
+    #sessionData$status$marker_ready <- FALSE  #aggs 
+    
     sobj <- sessionData$sobj_cluster()
 
-    req(input$sel_de_cluster1, input$sel_de_cluster2)
+    req(input$sel_de_cluster1, input$sel_de_cluster2, input$sel_test)
     
     withProgress(message = 'Finding differentially expressed genes...', value = 0, {
       df <- FindMarkers(sobj, ident.1 = input$sel_de_cluster1, ident.2 = input$sel_de_cluster2, 
                         only.pos = FALSE, min.pct = 0.25, logfc.threshold = 0.25)
       df <- df[ df$p_val_adj < 0.01, ]
     })
-    
+    sessionData$status$marker_ready <- TRUE  #aggs:  at this point of the analysis change icon color to green
     return(df)
   })
   
@@ -214,6 +218,7 @@ sc_markersServer <- function(input, output, session, sessionData) {
   })
   
   output$plot_de_genes <- renderPlot({
+    
     req(input$table_de_rows_selected)
     
     sobj <- sessionData$sobj_cluster()
@@ -224,12 +229,15 @@ sc_markersServer <- function(input, output, session, sessionData) {
       genes <- rownames(de_result())[ w ]
   
       VlnPlot(sobj, features = genes, pt.size=0.5)
+      
     }
+    
   })
   
   sessionData$all_markers <- all_markers
   
   return(sessionData)
 }
+
 
 
