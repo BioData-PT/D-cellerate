@@ -54,7 +54,7 @@ dim(mat)
 
 <br>
 
-This data set contains `r dim(mat)[1]` genes and `r dim(mat)[2]` cells. <!-- aggs -->
+This data set contains `r dim(mat)[1]` genes and `r dim(mat)[2]` cells.
 
 <br>
 
@@ -75,15 +75,15 @@ dim(sobj)
 ```
 
 
-<br> <!-- aggs --> 
+<br>  
 
-The filtered data set contains `r dim(sobj)[1]` genes and `r dim(sobj)[2]` cells. <!-- aggs -->
+The filtered data set contains `r dim(sobj)[1]` genes and `r dim(sobj)[2]` cells. 
 
 <!-- #barcode.plot.fun -->
 
 <!-- #violin.plot.fun -->
 
-<!-- aggs -->
+
 
 <br>
 
@@ -149,7 +149,7 @@ dim1 <- 1; dim2 <- 2; dim3 <- 3
 
 # Clustering
 
-<!-- aggs -->
+
 
 ```{r}
 #-- cluster.params
@@ -185,7 +185,7 @@ DimPlot(sobj, reduction = "tsne", label = TRUE)
 
 <!-- plot.tsne.fun -->
 
-<!-- aggs -->
+
 
 <br>
 
