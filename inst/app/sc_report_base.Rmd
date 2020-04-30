@@ -4,8 +4,10 @@ author: "D-cellerate"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
-    code_folding: show
     toc: true
+    toc_float: true
+    theme: united
+    code_folding: show
 params:
   import.params: NA
   filter.params: NA
@@ -13,11 +15,12 @@ params:
   cluster.params: NA
   cluster.renamed.params: NA
   tsne.params: NA
-  all.markers: NA
+  marker.params: NA
+  markers.params: NA
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
 ```
 
 <br>
@@ -32,6 +35,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
 library(Seurat)
 library(Matrix)
+#require("stringr")
 ```
 
 <br>
@@ -170,7 +174,7 @@ dim1 <- 1; dim2 <- 2; dim3 <- 3
 
 <br>
 
-# Dimensional reduction
+# Dimensional Reduction
 
 ```{r}
 #-- tsne.params
@@ -196,9 +200,16 @@ DimPlot(sobj, reduction = "tsne", label = TRUE)
 # Marker Gene Identification
 
 ```{r}
-
+#-- marker.params
+marker.params$genes <- strsplit(stringr::str_replace_all(marker.params$genes, 
+                                                         "c\\(|[^[A-Za-z0-9,]]", ""), ",")[[1]] # parse genes 
+marker.params$top.marker.genes <- strsplit(stringr::str_replace_all(marker.params$top.marker.genes, 
+                                                         "c\\(|[^[A-Za-z0-9,-]]", ""), ",")[[1]] # parse genes 
 ```
 
+<!-- #top.markers.fun -->
+
+<!-- #marker.plot.fun -->
 
 <br>
 

@@ -1,5 +1,23 @@
 # DE module
 
+#----------------------------------------------------------------------------------------
+#
+## AGGS code:
+
+sc.marker.plot <- function( sobj, marker.params ) {
+
+  if ( marker.params$type == "Feature plots" ) {
+    FeaturePlot(sobj, features = marker.params$genes)
+  } else { 
+    VlnPlot(sobj, features = marker.params$genes, pt.size=0.5)
+  }
+}
+
+sc.top.markers <- function( sobj, marker.params ) {
+  DoHeatmap( sobj, marker.params$top.marker.genes )
+}
+
+#----------------------------------------------------------------------------------------
 
 #' UI function for statistics module
 sc_markersUI <- function(id) {
@@ -135,21 +153,49 @@ sc_markersServer <- function(input, output, session, sessionData) {
       print("updating genes...")
       
       markers <- all_markers()
-      markers <- markers[[ input$sel_cluster ]]
       
+      markers <- markers[[ input$sel_cluster ]]
+        
       genes <- markers$gene
       
       updateSelectInput(session, "sel_genes", choices=genes, selected=genes[1])
     }
   })
   
+  
+  #----------------------------------------------------------------------------------------
+  #
+  ## AGGS code:
+  
+  marker.params <- reactive( { 
+    req(input$sel_type)
+    req(input$sel_cluster)
+    req(input$sel_genes)
+    markers <- all_markers()
+    top.markers <- do.call(rbind, lapply(markers, head))
+    top.marker.genes <- top.markers$gene
+    list( 
+      type = input$sel_type,
+      cluster = input$sel_cluster,
+      genes = input$sel_genes,
+      top.marker.genes = top.marker.genes
+    )
+  } )
+
+  
   output$plot_top_markers <- renderPlot({
     sobj <- sessionData$sobj_tsne_cluster()
-    markers <- all_markers()
-    
-    top.markers <- do.call(rbind, lapply(markers, head))
-    DoHeatmap(sobj, features = top.markers$gene) 
+    sc.top.markers( sobj, marker.params() ) 
   })
+  
+  # output$plot_top_markers <- renderPlot({
+  #   sobj <- sessionData$sobj_tsne_cluster()
+  #   markers <- all_markers()
+  #   top.markers <- do.call(rbind, lapply(markers, head))
+  #   DoHeatmap(sobj, features = top.markers$gene) 
+  # })
+  
+  #----------------------------------------------------------------------------------------
   
   output$table_markers <- renderDataTable({
     markers <- all_markers()
@@ -161,23 +207,38 @@ sc_markersServer <- function(input, output, session, sessionData) {
     return(DT::datatable(df, options = list(scrollX = TRUE), filter = "top"))
   })
   
+  #----------------------------------------------------------------------------------------
+  #
+  ## AGGS code:
+  
   output$plot_genes <- renderPlot({
-    req(input$sel_type)
-    req(input$sel_cluster)
-    req(input$sel_genes)
-    
+    #browser()
     all_markers()
-
-    genes <- input$sel_genes
-    
     sobj <- sessionData$sobj_tsne_cluster()
+    #print(marker.params())
+    sc.marker.plot( sobj, marker.params() )
     
-    if (input$sel_type == "Feature plots") {
-      FeaturePlot(sobj, features = genes)
-    } else { 
-      VlnPlot(sobj, features = genes, pt.size=0.5)
-    }
   })
+  
+  # output$plot_genes <- renderPlot({
+  #   req(input$sel_type)
+  #   req(input$sel_cluster)
+  #   req(input$sel_genes)
+  #   
+  #   all_markers()
+  # 
+  #   genes <- input$sel_genes
+  #   
+  #   sobj <- sessionData$sobj_tsne_cluster()
+  #   
+  #   if (input$sel_type == "Feature plots") {
+  #     FeaturePlot(sobj, features = genes)
+  #   } else { 
+  #     VlnPlot(sobj, features = genes, pt.size=0.5)
+  #   }
+  # })
+  
+  #----------------------------------------------------------------------------------------
   
   #
   # Differential expression
@@ -233,8 +294,12 @@ sc_markersServer <- function(input, output, session, sessionData) {
     }
     
   })
+
+  sessionData$markers.params <- all_markers
+  sessionData$marker.params <- marker.params #aggs
+  sessionData$top.markers.fun <- reactive(sc.top.markers) #aggs
+  sessionData$marker.plot.fun <- reactive(sc.marker.plot) #aggs
   
-  sessionData$all_markers <- all_markers
   
   return(sessionData)
 }

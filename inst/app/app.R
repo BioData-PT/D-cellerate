@@ -1,6 +1,6 @@
-  # Single-cell analysis pipeline 
+# Single-cell analysis pipeline 
 
-# devtools::install_github('rstudio/DT')
+# devtools::install_gith  ub('rstudio/DT')
 
 library(DT)
 
@@ -15,6 +15,7 @@ library(gridExtra)
 
 library(Matrix)
 
+require("stringr")
 library(formatR)
   
 # options(shiny.reactlog=TRUE)  
