@@ -3,18 +3,18 @@
 sc_exportUI <- function(id) {
   ns <- NS(id)
   
-  summary.ui <- tagList(
-    h3("Summary"),
-    htmlOutput(ns("text_summary"))
-  )
+  # summary.ui <- tagList(
+  #   h3("Summary"),
+  #   htmlOutput(ns("text_summary"))
+  # )
   
   tagList(
     useShinyjs(),
-    summary.ui,
+    #summary.ui,
     #uiOutput(ns("uiSections")),
     bookmarkButton(),
     downloadButton(ns("report"), "Generate report"),
-    h4("Debug"),
+    h4("Raw"),
     verbatimTextOutput(ns("txt_debug"))
   )
 }
@@ -26,22 +26,22 @@ sc_exportUI <- function(id) {
 #' @return A dataframe as a reactive value.
 sc_exportServer <- function(input, output, session, sessionData) {
   
-  output$text_summary <- renderUI({
-    fparams <- sessionData$filter.params()
-    
-    req(fparams)
-    
-    ftext <- tagList(
-      h4("Filtering parameters"),
-      tags$ul(
-        tags$li("Minimum UMI per cell: ", fparams$min_umi),
-        tags$li("Maximum UMI per cell: ", fparams$max_umi),
-        tags$li("Minimum genes per cell: ", fparams$min_genes),
-        tags$li("Maximum genes per cell: ", fparams$max_genes))
-    )
-    
-    return(ftext)
-  })
+  # output$text_summary <- renderUI({
+  #   fparams <- sessionData$filter.params()
+  #   
+  #   req(fparams)
+  #   
+  #   ftext <- tagList(
+  #     h4("Filtering parameters"),
+  #     tags$ul(
+  #       tags$li("Minimum UMI per cell: ", fparams$min.umi),
+  #       tags$li("Maximum UMI per cell: ", fparams$max.umi),
+  #       tags$li("Minimum genes per cell: ", fparams$min.genes),
+  #       tags$li("Maximum genes per cell: ", fparams$max.genes))
+  #   )
+  #   
+  #   return(ftext)
+  # })
   
   output$txt_debug <- renderText({
     # print(str(sessionData$import.params()))
@@ -57,7 +57,8 @@ sc_exportServer <- function(input, output, session, sessionData) {
   
   report.source <- reactive({
     req(sessionData$import.params(), 
-        sessionData$filter.params())
+        sessionData$filter.params(),
+        sessionData$markers.params())
     
     report <- readLines("sc_report_base.Rmd")
 

@@ -45,9 +45,9 @@ ui <- function(request) {
                     dropdownMenuOutput(outputId = "status")),
     dashboardSidebar(
       sidebarMenuOutput("tabs"),
-      tags$hr(),
-      helpText("Whether to automatically (re)calculate analysis results when an input is changed."),
-      materialSwitch("check_auto", label = "Automatic calculation", status="success", value=TRUE)
+      tags$hr()#,
+      #helpText("Whether to automatically (re)calculate analysis results when an input is changed."),
+      #materialSwitch("check_auto", label = "Automatic calculation", status="success", value=TRUE)
     ),
     dashboardBody(
       tabItems(
