@@ -14,7 +14,7 @@ License][cc-by].
 
 #### Introduction
 
-D-cellerate is a web application that provides a graphical interface for Seurat version 2, a popular single-cell RNA-seq (scRNA-seq) package for R. It provides an easy-to-use UI and the ability to export results as an HTML file.
+D-cellerate is a web application that provides a graphical interface for Seurat version 3, a popular single-cell RNA-seq (scRNA-seq) package for R. It provides an easy-to-use UI and the ability to export results as an HTML file.
 
 #### Installing
 
