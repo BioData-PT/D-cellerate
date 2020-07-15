@@ -12,7 +12,9 @@ License][cc-by].
 
 ## D-cellerate
 
-Test this tool at tooldemos.biodata.pt
+Test this tool at https://tooldemos.biodata.pt/
+
+Have questions? Ask us directly at https://forum.biodata.pt/
 
 
 #### Introduction
