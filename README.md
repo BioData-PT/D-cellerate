@@ -14,7 +14,7 @@ License][cc-by].
 
 Test this tool at https://tooldemos.biodata.pt/
 
-Have questions? Ask us directly at https://forum.biodata.pt/
+Have questions? Email us at info@biodata.pt
 
 If you would like to contribute to this tool, please read our Code of Conduct and Contributing guidelines at https://github.com/BioData-PT/Documents
 
